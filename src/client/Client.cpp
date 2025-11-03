@@ -18,10 +18,21 @@ std::string Client::hashPassword(const std::string& password) {
 }
 
 bool Client::createAccount(const std::string &username, const std::string &password) {
+    json msg = {
+        {"action", "create_account"},
+        {"username", username},
+        {"password_hash", hashPassword(password)}
+    };
+    //connection_->send(msg.dump());
 }
 
 bool Client::login(const std::string& username, const std::string& password) {
+    json msg = {
+        {"action", "login"},
+        {"username", username},
+        {"password_hash", hashPassword(password)}
+    };
+    //connection_->send(msg.dump());
 }
-
 void Client::sendMessage(const std::string &string, const std::string &message) {
 }
