@@ -1,29 +1,19 @@
 #ifndef ENCRYPTEDMESSENGER_CLIENT_H
 #define ENCRYPTEDMESSENGER_CLIENT_H
 #include <string>
-
+#include "network/TcpConnection.h"
+#include "json.hpp"  // nlohmann::json
 
 class Client {
-private:
-
-
 public:
-    Client() = default;
+    explicit Client(std::shared_ptr<TcpConnection> connection);
+    bool createAccount(const std::string& username, const std::string& password);
+    bool login(const std::string& username, const std::string& password);
+    void sendMessage(const std::string & string, const std::string & message);
 
-    void sendMessage(std::string recipient, std::string message) {
-        // send msg
-    }
-
-    bool createAccount(const std::string& username, const std::string & password) {
-
-        return false;
-    }
-
-    bool login(const std::string& username, const std::string& password) {
-
-        return false;
-    }
+private:
+    std::shared_ptr<TcpConnection> connection_;
+    std::string hashPassword(const std::string& password);
 };
-
 
 #endif //ENCRYPTEDMESSENGER_CLIENT_H
