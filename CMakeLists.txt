@@ -35,12 +35,18 @@ set(COMMON_SRC
 # OpenSSL via vcpkg
 # ===================================================
 find_package(OpenSSL REQUIRED)
+include_directories(${OPENSSL_INCLUDE_DIR})
 
 # ===================================================
 # Shared library
 # ===================================================
 add_library(messenger_common STATIC ${COMMON_SRC})
-target_include_directories(messenger_common PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_include_directories(messenger_common
+        PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/third_party/asio/include
+        ${PROJECT_SOURCE_DIR}/third_party/json
+)
 target_link_libraries(messenger_common PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 
 # ===================================================
