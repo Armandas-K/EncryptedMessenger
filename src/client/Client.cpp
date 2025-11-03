@@ -23,7 +23,7 @@ bool Client::createAccount(const std::string &username, const std::string &passw
         {"username", username},
         {"password_hash", hashPassword(password)}
     };
-    //connection_->send(msg.dump());
+    return connection_->send(msg.dump());
 }
 
 bool Client::login(const std::string& username, const std::string& password) {
@@ -32,7 +32,7 @@ bool Client::login(const std::string& username, const std::string& password) {
         {"username", username},
         {"password_hash", hashPassword(password)}
     };
-    //connection_->send(msg.dump());
+    return connection_->send(msg.dump());
 }
 void Client::sendMessage(const std::string &string, const std::string &message) {
 }
