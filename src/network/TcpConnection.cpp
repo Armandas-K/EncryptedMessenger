@@ -43,6 +43,30 @@ void TcpConnection::readAction() {
     );
 }
 
+bool TcpConnection::send(const std::string& message) {
+    // dont allow empty messages
+    if (message.empty())
+        return false;
+
+    auto self(shared_from_this());
+
+    // use async_write for non-blocking behavior
+    asio::async_write(
+        socket_,
+        asio::buffer(message),
+        [this, self](std::error_code ec, std::size_t /*bytes_transferred*/) {
+            if (ec) {
+                std::cerr << "[TcpConnection] Send failed: " << ec.message() << std::endl;
+            } else {
+                std::cout << "[TcpConnection] Message sent successfully.\n";
+            }
+        }
+    );
+
+    // return if queuing succeeded
+    return socket_.is_open();
+}
+
 void TcpConnection::handleAction(const nlohmann::json& message) {
     if (!message.contains("action")) {
         std::cerr << "[TcpConnection] Missing action field.\n";
