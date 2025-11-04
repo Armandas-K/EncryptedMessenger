@@ -13,10 +13,11 @@ asio::ip::tcp::socket& TcpConnection::socket() {
     return socket_;
 }
 
-void TcpConnection::start() {
+bool TcpConnection::start() {
     std::cout << "[TcpConnection] Started connection from: "
               << socket_.remote_endpoint().address().to_string() << std::endl;
     readAction();
+    return true;
 }
 
 void TcpConnection::readAction() {
@@ -43,10 +44,10 @@ void TcpConnection::readAction() {
     );
 }
 
-bool TcpConnection::send(const std::string& message) {
-    // dont allow empty messages
-    if (message.empty())
-        return false;
+void TcpConnection::send(const std::string& message) {
+    if (message.empty()) {
+        std::cerr << "[TcpConnection] Cannot send: empty message.\n";
+    }
 
     auto self(shared_from_this());
 
@@ -56,15 +57,12 @@ bool TcpConnection::send(const std::string& message) {
         asio::buffer(message),
         [this, self](std::error_code ec, std::size_t /*bytes_transferred*/) {
             if (ec) {
-                std::cerr << "[TcpConnection] Send failed: " << ec.message() << std::endl;
+                std::cerr << "[TcpConnection] Request failed: " << ec.message() << std::endl;
             } else {
-                std::cout << "[TcpConnection] Message sent successfully.\n";
+                std::cout << "[TcpConnection] Outgoing request queued for delivery.\n";
             }
         }
     );
-
-    // return if queuing succeeded
-    return socket_.is_open();
 }
 
 void TcpConnection::handleAction(const nlohmann::json& message) {

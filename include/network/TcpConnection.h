@@ -23,10 +23,10 @@ public:
     asio::ip::tcp::socket& socket();
 
     // start asynchronous reading from the connection.
-    void start();
+    bool start();
 
-    // send a string message to the connected client.
-    bool send(const std::string& message);
+    // send a string message from connected client.
+    void send(const std::string& message);
 
 private:
     TcpConnection(asio::io_context& io_context, TcpServer* server);
