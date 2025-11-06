@@ -40,11 +40,6 @@ private:
     // called when a complete json message is received.
     void handleAction(const nlohmann::json& message);
 
-    // handler declarations
-    void handleLogin(const nlohmann::json& data);
-    void handleCreateAccount(const nlohmann::json& data);
-    void handleSendMessage(const nlohmann::json& data);
-
     asio::ip::tcp::socket socket_;   // active socket for this client
     TcpServer* server_;              // reference to parent server
     std::array<char, 1024> buffer_;  // temp buffer for reads

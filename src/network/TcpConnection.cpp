@@ -83,30 +83,7 @@ void TcpConnection::handleAction(const nlohmann::json& message) {
         return;
     }
 
-    std::string action = message["action"];
-
-    if (action == "login") {
-        handleLogin(message);
-    } else if (action == "create_account") {
-        handleCreateAccount(message);
-    } else if (action == "send_message") {
-        handleSendMessage(message);
-    } else {
-        std::cerr << "[TcpConnection] Unknown action: " << action << std::endl;
+    if (server_) {
+        server_->handleAction(shared_from_this(), message);
     }
-}
-
-void TcpConnection::handleLogin(const nlohmann::json& data) {
-    std::cout << "[TcpConnection] Handling login for user: "
-              << data.value("username", "unknown") << std::endl;
-    // todo forward to TcpServer for processing
-}
-
-void TcpConnection::handleCreateAccount(const nlohmann::json& data) {
-    std::cout << "[TcpConnection] Handling account creation for user: "
-              << data.value("username", "unknown") << std::endl;
-}
-
-void TcpConnection::handleSendMessage(const nlohmann::json& data) {
-    std::cout << "[TcpConnection] Handling send message.\n";
 }

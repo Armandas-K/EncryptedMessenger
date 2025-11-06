@@ -34,6 +34,53 @@ void TcpServer::handleAccept(TcpConnection::pointer new_connection, const std::e
     startAccept();
 }
 
+void TcpServer::handleAction(TcpConnection::pointer connection, const nlohmann::json& message) {
+    std::string action = message.value("action", "");
+
+    if (action == "create_account") {
+        handleCreateAccount(connection, message);
+    } else if (action == "login") {
+        handleLogin(connection, message);
+    } else {
+        std::cerr << "[TcpServer] Unknown action: " << action << std::endl;
+    }
+}
+
+void TcpServer::handleCreateAccount(TcpConnection::pointer connection, const nlohmann::json& data) {
+    std::string username = data.value("username", "");
+    std::string password_hash = data.value("password_hash", "");
+
+    if (username.empty() || password_hash.empty()) {
+        connection->send(R"({"status":"error","message":"Missing credentials"})");
+        return;
+    }
+
+    if (storage_.userExists(username)) {
+        connection->send(R"({"status":"error","message":"User already exists"})");
+        return;
+    }
+
+    storage_.createUser(username, password_hash);
+    connection->send(R"({"status":"success","message":"Account created"})");
+}
+
+void TcpServer::handleLogin(TcpConnection::pointer connection, const nlohmann::json& data) {
+    std::string username = data.value("username", "");
+    std::string password_hash = data.value("password_hash", "");
+
+    if (!storage_.userExists(username)) {
+        connection->send(R"({"status":"error","message":"Invalid username"})");
+        return;
+    }
+
+    if (!storage_.validateUser(username, password_hash)) {
+        connection->send(R"({"status":"error","message":"Invalid password"})");
+        return;
+    }
+
+    connection->send(R"({"status":"success","message":"Login successful"})");
+}
+
 void TcpServer::removeConnection(TcpConnection::pointer connection) {
     auto it = std::find(active_connections_.begin(), active_connections_.end(), connection);
     if (it != active_connections_.end()) {
