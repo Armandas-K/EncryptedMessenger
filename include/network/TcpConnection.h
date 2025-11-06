@@ -28,6 +28,9 @@ public:
     // send a string message from connected client.
     void send(const std::string& message);
 
+    // close the connection and notify the server.
+    void disconnect();
+
 private:
     TcpConnection(asio::io_context& io_context, TcpServer* server);
 
@@ -46,6 +49,5 @@ private:
     TcpServer* server_;              // reference to parent server
     std::array<char, 1024> buffer_;  // temp buffer for reads
 };
-
 
 #endif //ENCRYPTEDMESSENGER_TCPCONNECTION_H

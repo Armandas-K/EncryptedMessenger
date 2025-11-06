@@ -39,6 +39,7 @@ void TcpConnection::readAction() {
                 readAction();
             } else {
                 std::cerr << "[TcpConnection] Read error: " << ec.message() << std::endl;
+                disconnect(); // safely close the connection and notify server
             }
         }
     );
@@ -51,18 +52,29 @@ void TcpConnection::send(const std::string& message) {
 
     auto self(shared_from_this());
 
-    // use async_write for non-blocking behavior
     asio::async_write(
         socket_,
         asio::buffer(message),
         [this, self](std::error_code ec, std::size_t /*bytes_transferred*/) {
             if (ec) {
                 std::cerr << "[TcpConnection] Request failed: " << ec.message() << std::endl;
+                disconnect();
             } else {
                 std::cout << "[TcpConnection] Outgoing request queued for delivery.\n";
             }
         }
     );
+}
+
+void TcpConnection::disconnect() {
+    std::error_code ec;
+    socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
+    socket_.close(ec);
+    std::cout << "[TcpConnection] Disconnected.\n";
+
+    if (server_) {
+        server_->removeConnection(shared_from_this());
+    }
 }
 
 void TcpConnection::handleAction(const nlohmann::json& message) {
@@ -87,7 +99,6 @@ void TcpConnection::handleAction(const nlohmann::json& message) {
 void TcpConnection::handleLogin(const nlohmann::json& data) {
     std::cout << "[TcpConnection] Handling login for user: "
               << data.value("username", "unknown") << std::endl;
-
     // todo forward to TcpServer for processing
 }
 
