@@ -51,10 +51,20 @@ bool FileStorage::createUser(const std::string& username, const std::string& pas
     return save();
 }
 
-bool FileStorage::validateUser(const std::string& username, const std::string& password_hash) {
+bool FileStorage::loginUser(const std::string& username, const std::string& password_hash) {
     std::lock_guard<std::mutex> lock(file_mutex_);
     for (const auto& user : data_["users"]) {
         if (user["username"] == username && user["password_hash"] == password_hash) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool FileStorage::userExists(const std::string &username) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    for (const auto& user : data_["users"]) {
+        if (user["username"] == username) {
             return true;
         }
     }

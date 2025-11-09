@@ -73,7 +73,7 @@ void TcpServer::handleLogin(TcpConnection::pointer connection, const nlohmann::j
         return;
     }
 
-    if (!storage_.validateUser(username, password_hash)) {
+    if (!storage_.loginUser(username, password_hash)) {
         connection->send(R"({"status":"error","message":"Invalid password"})");
         return;
     }

@@ -16,7 +16,10 @@ public:
     bool createUser(const std::string& username, const std::string& password_hash);
 
     // verify username and hashed password against users.json data
-    bool validateUser(const std::string& username, const std::string& password_hash);
+    bool loginUser(const std::string& username, const std::string& password_hash);
+
+    // check if username is taken
+    bool userExists(const std::string & username);
 
 private:
     // load users.json data into memory
