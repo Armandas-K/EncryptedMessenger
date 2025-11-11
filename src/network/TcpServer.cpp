@@ -25,7 +25,7 @@ void TcpServer::handleAccept(TcpConnection::pointer new_connection, const std::e
     if (!error) {
         std::cout << "[TcpServer] New connection accepted.\n";
         active_connections_.push_back(new_connection);
-        new_connection->start();
+        new_connection->beginRead();
     } else {
         std::cerr << "[TcpServer] Accept error: " << error.message() << std::endl;
     }

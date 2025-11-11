@@ -13,9 +13,22 @@ asio::ip::tcp::socket& TcpConnection::socket() {
     return socket_;
 }
 
-bool TcpConnection::start() {
-    std::cout << "[TcpConnection] Started connection from: "
-              << socket_.remote_endpoint().address().to_string() << std::endl;
+bool TcpConnection::beginRead() {
+    if (!socket_.is_open()) {
+        std::cerr << "[TcpConnection] Cannot start: socket is not open.\n";
+        return false;
+    }
+
+    try {
+        auto endpoint = socket_.remote_endpoint();
+        std::cout << "[TcpConnection] Started connection from: "
+                  << endpoint.address().to_string() << ":" << endpoint.port() << std::endl;
+    } catch (const std::system_error& e) {
+        std::cerr << "[TcpConnection] Could not retrieve remote endpoint: "
+                  << e.what() << std::endl;
+        // connection might still be valid
+    }
+
     readAction();
     return true;
 }

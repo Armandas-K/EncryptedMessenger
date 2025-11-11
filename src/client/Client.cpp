@@ -2,6 +2,7 @@
 #include <openssl/sha.h>
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 
 using json = nlohmann::json;
 
@@ -18,13 +19,19 @@ std::string Client::hashPassword(const std::string& password) {
 }
 
 bool Client::createAccount(const std::string &username, const std::string &password) {
-    json msg = {
+    if (!connection_ || !connection_->socket().is_open()) {
+        std::cerr << "[Client] Cannot create account: no active connection.\n";
+        return false;
+    }
+
+    nlohmann::json msg = {
         {"action", "create_account"},
         {"username", username},
         {"password_hash", hashPassword(password)}
     };
+
     connection_->send(msg.dump());
-    return connection_->start();
+    return connection_->beginRead();
 }
 
 bool Client::login(const std::string& username, const std::string& password) {
@@ -34,7 +41,7 @@ bool Client::login(const std::string& username, const std::string& password) {
         {"password_hash", hashPassword(password)}
     };
     connection_->send(msg.dump());
-    return connection_->start();
+    return connection_->beginRead();
 }
 void Client::sendMessage(const std::string &string, const std::string &message) {
 }
