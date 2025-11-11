@@ -47,7 +47,13 @@ target_include_directories(messenger_common
         ${PROJECT_SOURCE_DIR}/third_party/asio/include
         ${PROJECT_SOURCE_DIR}/third_party/json
 )
-target_link_libraries(messenger_common PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+target_link_libraries(messenger_common
+        PRIVATE
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        ws2_32
+        mswsock
+)
 
 # ===================================================
 # Executables
@@ -64,7 +70,7 @@ target_link_libraries(messenger_client PRIVATE messenger_common)
 add_executable(test_crypto tests/CryptoTests.cpp)
 target_link_libraries(test_crypto PRIVATE messenger_common)
 
-add_executable(test_network tests/NetworkTests.cpp)
+add_executable(test_network tests/NetworkTests.cpp ${CLIENT_SRC})
 target_link_libraries(test_network PRIVATE messenger_common)
 
 # Ensure console subsystem for MinGW
