@@ -30,7 +30,7 @@ private:
 
 private:
     // hardcoded path to user account file
-    static constexpr const char* USERS_PATH = "data/users.json";
+    std::string userFilePath_ = USERS_PATH;
     nlohmann::json data_;      // in-memory cache of user credentials
     std::mutex file_mutex_;    // thread-safe access control for reads/writes
 };

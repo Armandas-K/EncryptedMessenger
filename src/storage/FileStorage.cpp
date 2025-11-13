@@ -7,7 +7,7 @@ FileStorage::FileStorage() {
 
 bool FileStorage::load() {
     std::lock_guard<std::mutex> lock(file_mutex_);
-    std::ifstream file(USERS_PATH);
+    std::ifstream file(userFilePath_);
     if (!file.is_open()) {
         std::cerr << "[FileStorage] Could not open users file, creating new one.\n";
         data_["users"] = nlohmann::json::array();
@@ -27,7 +27,7 @@ bool FileStorage::load() {
 
 bool FileStorage::save() {
     std::lock_guard<std::mutex> lock(file_mutex_);
-    std::ofstream file(USERS_PATH);
+    std::ofstream file(userFilePath_);
     if (!file.is_open()) return false;
 
     file << data_.dump(4);
