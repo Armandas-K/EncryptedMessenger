@@ -8,9 +8,20 @@ FileStorage::FileStorage() {
 bool FileStorage::load() {
     std::lock_guard<std::mutex> lock(file_mutex_);
     std::ifstream file(userFilePath_);
+
     if (!file.is_open()) {
         std::cerr << "[FileStorage] Could not open users file, creating new one.\n";
         data_["users"] = nlohmann::json::array();
+        file.close();
+        save();
+        return true;
+    }
+
+    // handle empty file
+    if (file.peek() == std::ifstream::traits_type::eof()) {
+        std::cerr << "[FileStorage] Empty users file, reinitializing.\n";
+        data_["users"] = nlohmann::json::array();
+        file.close();
         save();
         return true;
     }
@@ -19,6 +30,9 @@ bool FileStorage::load() {
         file >> data_;
     } catch (...) {
         std::cerr << "[FileStorage] Invalid JSON format in users file.\n";
+        file.close();
+        data_["users"] = nlohmann::json::array();
+        save();
         return false;
     }
 

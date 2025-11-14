@@ -86,4 +86,5 @@ add_compile_definitions(_WIN32_WINNT=0x0A00)
 set(USER_DATA_PATH "${CMAKE_SOURCE_DIR}/data/users.json")
 
 # Pass to C++ as a macro
+set(USER_DATA_PATH "${CMAKE_SOURCE_DIR}/data/users.json")
 add_compile_definitions(USERS_PATH="${USER_DATA_PATH}")
