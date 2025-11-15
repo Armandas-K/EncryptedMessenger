@@ -40,7 +40,6 @@ bool FileStorage::load() {
 }
 
 bool FileStorage::save() {
-    std::lock_guard<std::mutex> lock(file_mutex_);
     std::ofstream file(userFilePath_);
     if (!file.is_open()) return false;
 
