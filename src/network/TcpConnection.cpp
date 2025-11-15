@@ -3,7 +3,9 @@
 #include <iostream>
 
 TcpConnection::TcpConnection(asio::io_context& io_context, TcpServer* server)
-    : socket_(io_context), server_(server) {}
+    : socket_(io_context),
+      io_context_(io_context),
+      server_(server) {}
 
 TcpConnection::pointer TcpConnection::create(asio::io_context& io_context, TcpServer* server) {
     return pointer(new TcpConnection(io_context, server));
@@ -77,6 +79,25 @@ void TcpConnection::send(const std::string& message) {
             }
         }
     );
+}
+
+bool TcpConnection::connect(const std::string& host, int port) {
+    asio::ip::tcp::resolver resolver(io_context_);
+    asio::error_code ec;
+
+    auto endpoints = resolver.resolve(host, std::to_string(port), ec);
+    if (ec) {
+        std::cerr << "[TcpConnection] Resolve error: " << ec.message() << "\n";
+        return false;
+    }
+
+    asio::connect(socket_, endpoints, ec);
+    if (ec) {
+        std::cerr << "[TcpConnection] Connect error: " << ec.message() << "\n";
+        return false;
+    }
+
+    return true;
 }
 
 void TcpConnection::disconnect() {

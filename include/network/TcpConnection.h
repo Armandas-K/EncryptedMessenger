@@ -28,6 +28,9 @@ public:
     // send a string message from connected client.
     void send(const std::string& message);
 
+    // connect to socket
+    bool connect(const std::string& host, int port);
+
     // close the connection and notify the server.
     void disconnect();
 
@@ -41,6 +44,7 @@ private:
     void handleAction(const nlohmann::json& message);
 
     asio::ip::tcp::socket socket_;   // active socket for this client
+    asio::io_context& io_context_;   // used for I/O
     TcpServer* server_;              // reference to parent server
     std::array<char, 1024> buffer_;  // temp buffer for reads
 };
