@@ -52,9 +52,22 @@ void TcpConnection::readAction() {
 
                 // keep reading for next messages
                 readAction();
-            } else {
-                std::cerr << "[TcpConnection] Read error: " << ec.message() << std::endl;
-                disconnect(); // safely close the connection and notify server
+            }
+            else
+            {
+                // expected disconnects
+                if (ec == asio::error::eof ||
+                    ec == asio::error::connection_reset ||
+                    ec == asio::error::connection_aborted)
+                {
+                    // silently disconnect
+                    disconnect();
+                    return;
+                }
+
+                // real errors
+                std::cerr << "[TcpConnection] Read error: " << ec.message() << "\n";
+                disconnect();
             }
         }
     );
@@ -101,9 +114,16 @@ bool TcpConnection::connect(const std::string& host, int port) {
 }
 
 void TcpConnection::disconnect() {
-    std::error_code ec;
+    if (!socket_.is_open()) {
+        return; // already closed
+    }
+
+    asio::error_code ec;
+
+    // Shutdown cleanly
     socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
     socket_.close(ec);
+
     std::cout << "[TcpConnection] Disconnected.\n";
 
     if (server_) {
