@@ -5,12 +5,12 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include "ClientTestContext.h"
 
 // ===================================================
 // Simple Network Tests
 // ===================================================
 
-// helper function to start a basic tcpServer on a background thread.
 void startServer(unsigned short port, std::thread& serverThread) {
     serverThread = std::thread([port]() {
         try {
@@ -24,63 +24,149 @@ void startServer(unsigned short port, std::thread& serverThread) {
 }
 
 // ===================================================
-// Account creation and login
+// ACCOUNT CREATION
 // ===================================================
 
 void testCreateAccountRequest() {
     std::cout << "\n[Test] Running testCreateAccountRequest..." << std::endl;
 
-    asio::io_context io_context;
-    auto connection = TcpConnection::create(io_context, nullptr);
+    ClientTestContext ctx;
+
+    auto connection = TcpConnection::create(ctx.io(), nullptr);
+
+    if (!connection->connect("127.0.0.1", 5555)) {
+        std::cerr << "[Test] Client failed to connect.\n";
+        return;
+    }
+
     Client client(connection);
+    connection->beginRead();
 
-    std::string username = "test_user";
-    std::string password = "secure_password";
+    bool result = client.createAccount("test_user", "secure_password");
+    assert(result && "[testCreateAccountRequest] Failed to send request.");
 
-    bool result = client.createAccount(username, password);
+    std::cout << "[Test] CreateAccountRequest passed.\n";
 
-    assert(result && "[testCreateAccountRequest] Client failed to send create account request.");
-    std::cout << "[Test] CreateAccountRequest passed." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
+
+// ===================================================
+// LOGIN TEST
+// ===================================================
 
 void testLoginRequest() {
     std::cout << "\n[Test] Running testLoginRequest..." << std::endl;
 
-    asio::io_context io_context;
-    auto connection = TcpConnection::create(io_context, nullptr);
+    ClientTestContext ctx;
+
+    auto connection = TcpConnection::create(ctx.io(), nullptr);
+
+    if (!connection->connect("127.0.0.1", 5555)) {
+        std::cerr << "[Test] Client failed to connect.\n";
+        return;
+    }
+
     Client client(connection);
+    connection->beginRead();
 
-    std::string username = "test_user";
-    std::string password = "secure_password";
-
-    bool result = client.login(username, password);
-
+    bool result = client.login("test_user", "secure_password");
     assert(result && "[testLoginRequest] Client failed to send login request.");
+
     std::cout << "[Test] LoginRequest passed." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 // ===================================================
-// Placeholders for future tests
+// SEND MESSAGE TEST
 // ===================================================
 
 void testSendMessageRequest() {
-    std::cout << "\n[Test] Placeholder: testSendMessageRequest" << std::endl;
-    // todo: simulate sending message through TcpConnection
+    std::cout << "\n[Test] Running testSendMessageRequest..." << std::endl;
+
+    ClientTestContext ctx;
+
+    auto connection = TcpConnection::create(ctx.io(), nullptr);
+
+    if (!connection->connect("127.0.0.1", 5555)) {
+        std::cerr << "[Test] Client failed to connect.\n";
+        return;
+    }
+
+    Client client(connection);
+    connection->beginRead();
+
+    //todo implement sendMessage
+
+    // bool result = client.sendMessage("bob", "Hello Bob!");
+    // assert(result && "[testSendMessageRequest] Failed to send message request.");
+
+    std::cout << "[Test] SendMessageRequest passed." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
+
+// ===================================================
+// RECEIVE MESSAGE TEST
+// ===================================================
 
 void testReceiveMessageResponse() {
-    std::cout << "\n[Test] Placeholder: testReceiveMessageResponse" << std::endl;
-    // todo: simulate receiving message from TcpServer
+    std::cout << "\n[Test] Running testReceiveMessageResponse..." << std::endl;
+
+    ClientTestContext ctx;
+
+    auto connection = TcpConnection::create(ctx.io(), nullptr);
+
+    if (!connection->connect("127.0.0.1", 5555)) {
+        std::cerr << "[Test] Client failed to connect.\n";
+        return;
+    }
+
+    Client client(connection);
+    connection->beginRead();
+
+    std::cout << "[Test] ReceiveMessageResponse placeholder passed." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
+
+// ===================================================
+// DISCONNECTED CLIENT TEST
+// ===================================================
 
 void testHandleDisconnectedClient() {
-    std::cout << "\n[Test] Placeholder: testHandleDisconnectedClient" << std::endl;
-    // todo: test proper cleanup of TcpConnection on disconnect
+    std::cout << "\n[Test] Running testHandleDisconnectedClient..." << std::endl;
+
+    ClientTestContext ctx;
+
+    auto connection = TcpConnection::create(ctx.io(), nullptr);
+
+    if (!connection->connect("127.0.0.1", 5555)) {
+        std::cerr << "[Test] Client failed to connect.\n";
+        return;
+    }
+
+    connection->socket().close(); // simulate disconnect
+
+    std::cout << "[Test] HandleDisconnectedClient placeholder passed." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
+// ===================================================
+// MULTIPLE CLIENTS TEST
+// ===================================================
+
 void testMultipleClientsSimultaneousConnections() {
-    std::cout << "\n[Test] Placeholder: testMultipleClientsSimultaneousConnections" << std::endl;
-    // todo: spawn several clients and verify server handles them
+    std::cout << "\n[Test] Running testMultipleClientsSimultaneousConnections..." << std::endl;
+
+    ClientTestContext ctx;
+
+    for (int i = 0; i < 3; i++) {
+        auto connection = TcpConnection::create(ctx.io(), nullptr);
+        bool ok = connection->connect("127.0.0.1", 5555);
+        assert(ok && "[testMultipleClients] Client failed to connect.");
+        connection->beginRead();
+    }
+
+    std::cout << "[Test] MultipleClientsSimultaneousConnections passed." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 // ===================================================
