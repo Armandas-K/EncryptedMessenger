@@ -43,6 +43,8 @@ void TcpServer::handleAction(TcpConnection::pointer connection, const nlohmann::
         handleCreateAccount(connection, message);
     } else if (action == "login") {
         handleLogin(connection, message);
+    } else if (action == "send_message") {
+        handleSendMessage(connection, message);
     } else {
         std::cerr << "[TcpServer] Unknown action: " << action << std::endl;
     }
@@ -81,6 +83,18 @@ void TcpServer::handleLogin(TcpConnection::pointer connection, const nlohmann::j
     }
 
     connection->send(R"({"status":"success","message":"Login successful"})");
+}
+
+void TcpServer::handleSendMessage(TcpConnection::pointer connection, const nlohmann::json& data) {
+    std::string to = data.value("to", "");
+    std::string message = data.value("message", "");
+
+    if (to.empty() || message.empty()) {
+        connection->send(R"({"status":"error","message":"Invalid message format"})");
+        return;
+    }
+    // todo implement message handler
+    // messageHandler_.processMessage(connection, to, message);
 }
 
 void TcpServer::removeConnection(TcpConnection::pointer connection) {

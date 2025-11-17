@@ -43,5 +43,18 @@ bool Client::login(const std::string& username, const std::string& password) {
     connection_->send(msg.dump());
     return connection_->beginRead();
 }
-void Client::sendMessage(const std::string &string, const std::string &message) {
+
+void Client::sendMessage(const std::string& to, const std::string& message) {
+    if (!connection_ || !connection_->socket().is_open()) {
+        std::cerr << "[Client] Cannot send message: no active connection.\n";
+        return;
+    }
+
+    nlohmann::json msg = {
+        {"action", "send_message"},
+        {"to", to},
+        {"message", message}
+    };
+
+    connection_->send(msg.dump());
 }

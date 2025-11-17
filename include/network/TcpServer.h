@@ -4,6 +4,7 @@
 #include <asio.hpp>
 #include <memory>
 #include <vector>
+#include "client/MessageHandler.h"
 #include "network/tcpConnection.h"
 #include "storage/FileStorage.h"
 
@@ -30,11 +31,13 @@ private:
     // handler declarations
     void handleCreateAccount(TcpConnection::pointer connection, const nlohmann::json &data);
     void handleLogin(TcpConnection::pointer connection, const nlohmann::json &data);
+    void handleSendMessage(TcpConnection::pointer connection, const nlohmann::json &data);
 
     asio::io_context& io_context_;                           // reference to shared io_context
     asio::ip::tcp::acceptor acceptor_;                       // accepts incoming connections
     std::vector<TcpConnection::pointer> active_connections_; // active connected clients
     FileStorage storage_;                                    // write to user storage
+    MessageHandler messageHandler_;                          // handle message functionality
 };
 
 #endif //ENCRYPTEDMESSENGER_TCPSERVER_H
