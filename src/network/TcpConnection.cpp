@@ -2,6 +2,8 @@
 #include "network/tcpServer.h"
 #include <iostream>
 
+#include "utils/Logger.h"
+
 TcpConnection::TcpConnection(asio::io_context& io_context, TcpServer* server)
     : socket_(io_context),
       io_context_(io_context),
@@ -23,8 +25,9 @@ bool TcpConnection::beginRead() {
 
     try {
         auto endpoint = socket_.remote_endpoint();
-        std::cout << "[TcpConnection] Started connection from: "
-                  << endpoint.address().to_string() << ":" << endpoint.port() << std::endl;
+        Logger::log("[TcpConnection] Started connection from: "
+                  + endpoint.address().to_string() + ":"
+                  + std::to_string(endpoint.port()));
     } catch (const std::system_error& e) {
         std::cerr << "[TcpConnection] Could not retrieve remote endpoint: "
                   << e.what() << std::endl;
@@ -88,7 +91,7 @@ void TcpConnection::send(const std::string& message) {
                 std::cerr << "[TcpConnection] Request failed: " << ec.message() << std::endl;
                 disconnect();
             } else {
-                std::cout << "[TcpConnection] Outgoing request queued for delivery.\n";
+                Logger::log("[TcpConnection] Outgoing request queued for delivery.\n");
             }
         }
     );
@@ -124,7 +127,7 @@ void TcpConnection::disconnect() {
     socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
     socket_.close(ec);
 
-    std::cout << "[TcpConnection] Disconnected.\n";
+    Logger::log("[TcpConnection] Disconnected.\n");
 
     if (server_) {
         server_->removeConnection(shared_from_this());

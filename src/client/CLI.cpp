@@ -1,4 +1,5 @@
 #include "client/CLI.h"
+#include "utils/Logger.h"
 
 // Constructor, initialises members
 CLI::CLI(std::shared_ptr<Client> client)
@@ -33,10 +34,10 @@ void CLI::displayCurrentPage() {
 
 // ----------- Main Menu Page -------------
 void CLI::showMainMenu() {
-    std::cout << "\n=== Encrypted Messenger ===\n";
-    std::cout << "1. Log in\n";
-    std::cout << "2. Create Account\n";
-    std::cout << "3. Exit\n";
+    Logger::log("\n=== Encrypted Messenger ===\n");
+    Logger::log("1. Log in\n");
+    Logger::log("2. Create Account\n");
+    Logger::log("3. Exit\n");
     int choice = getUserChoice(1, 3);
     handleMainMenuInput(choice);
 }
@@ -51,9 +52,9 @@ void CLI::handleMainMenuInput(int choice) {
 
 // ----------- Login Page -------------
 void CLI::showLoginPage() {
-    std::cout << "\n=== Login ===\n";
-    std::cout << "1. Enter credentials\n";
-    std::cout << "2. Back\n";
+    Logger::log("\n=== Login ===\n");
+    Logger::log("1. Enter credentials\n");
+    Logger::log("2. Back\n");
     int choice = getUserChoice(1, 2);
     handleLoginInput(choice);
 }
@@ -62,16 +63,16 @@ void CLI::handleLoginInput(int choice) {
     switch (choice) {
         case 1: {
             std::string username, password;
-            std::cout << "Username: ";
+            Logger::log("Username: ");
             std::cin >> username;
-            std::cout << "Password: ";
+            Logger::log("Password: ");
             std::cin >> password;
             // Call your client’s login function
             if (client->login(username, password)) {
-                std::cout << "Login successful!\n";
+                Logger::log("Login successful!\n");
                 currentPage = Page::SEND_MESSAGE;
             } else {
-                std::cout << "Login failed.\n";
+                Logger::log("Login failed.\n");
                 currentPage = Page::MAIN_MENU;
             }
             break;
@@ -84,9 +85,9 @@ void CLI::handleLoginInput(int choice) {
 
 // ----------- Create Account Page -------------
 void CLI::showCreateAccountPage() {
-    std::cout << "\n=== Create Account ===\n";
-    std::cout << "1. Enter details\n";
-    std::cout << "2. Back\n";
+    Logger::log("\n=== Create Account ===\n");
+    Logger::log("1. Enter details\n");
+    Logger::log("2. Back\n");
     int choice = getUserChoice(1, 2);
     handleCreateAccountInput(choice);
 }
@@ -95,14 +96,14 @@ void CLI::handleCreateAccountInput(int choice) {
     switch (choice) {
         case 1: {
             std::string username, password;
-            std::cout << "New username: ";
+            Logger::log("New username: ");
             std::cin >> username;
-            std::cout << "New password: ";
+            Logger::log("New password: ");
             std::cin >> password;
             if (client->createAccount(username, password)) {
-                std::cout << "Account created!\n";
+                Logger::log("Account created!\n");
             } else {
-                std::cout << "Account creation failed.\n";
+                Logger::log("Account creation failed.\n");
             }
             currentPage = Page::MAIN_MENU;
             break;
@@ -115,9 +116,9 @@ void CLI::handleCreateAccountInput(int choice) {
 
 // ----------- Send Message Page -------------
 void CLI::showSendMessagePage() {
-    std::cout << "\n=== Send Message ===\n";
-    std::cout << "1. Send a message\n";
-    std::cout << "2. Log out\n";
+    Logger::log("\n=== Send Message ===\n");
+    Logger::log("1. Send a message\n");
+    Logger::log("2. Log out\n");
     int choice = getUserChoice(1, 2);
     handleSendMessageInput(choice);
 }
@@ -126,13 +127,13 @@ void CLI::handleSendMessageInput(int choice) {
     switch (choice) {
         case 1: {
             std::string recipient, message;
-            std::cout << "Recipient: ";
+            Logger::log("Recipient: ");
             std::cin >> recipient;
             std::cin.ignore();
-            std::cout << "Message: ";
+            Logger::log("Message: ");
             std::getline(std::cin, message);
             client->sendMessage(recipient, message);
-            std::cout << "Message sent!\n";
+            Logger::log("Message sent!\n");
             break;
         }
         case 2:
@@ -145,12 +146,12 @@ void CLI::handleSendMessageInput(int choice) {
 int CLI::getUserChoice(int min, int max) {
     int choice;
     while (true) {
-        std::cout << "> ";
+        Logger::log("> ");
         std::cin >> choice;
         if (std::cin.fail() || choice < min || choice > max) {
             std::cin.clear();
             std::cin.ignore(1000, '\n');
-            std::cout << "Invalid option. Try again.\n";
+            Logger::log("Invalid option. Try again.\n");
         } else {
             return choice;
         }

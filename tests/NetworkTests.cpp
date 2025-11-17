@@ -6,6 +6,7 @@
 #include <chrono>
 #include <iostream>
 #include "utils/ClientTestContext.h"
+#include "utils/Logger.h"
 
 // ===================================================
 // Simple Network Tests
@@ -28,7 +29,7 @@ void startServer(unsigned short port, std::thread& serverThread) {
 // ===================================================
 
 void testCreateAccountRequest() {
-    std::cout << "\n[Test] Running testCreateAccountRequest..." << std::endl;
+    Logger::log("\n[Test] Running testCreateAccountRequest...");
 
     ClientTestContext ctx;
 
@@ -45,7 +46,7 @@ void testCreateAccountRequest() {
     bool result = client.createAccount("test_user", "secure_password");
     assert(result && "[testCreateAccountRequest] Failed to send request.");
 
-    std::cout << "[Test] CreateAccountRequest passed.\n";
+    Logger::log("[Test] CreateAccountRequest passed.\n");
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
@@ -55,7 +56,7 @@ void testCreateAccountRequest() {
 // ===================================================
 
 void testLoginRequest() {
-    std::cout << "\n[Test] Running testLoginRequest..." << std::endl;
+    Logger::log("\n[Test] Running testLoginRequest...");
 
     ClientTestContext ctx;
 
@@ -72,7 +73,7 @@ void testLoginRequest() {
     bool result = client.login("test_user", "secure_password");
     assert(result && "[testLoginRequest] Client failed to send login request.");
 
-    std::cout << "[Test] LoginRequest passed." << std::endl;
+    Logger::log("[Test] LoginRequest passed.");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -81,7 +82,7 @@ void testLoginRequest() {
 // ===================================================
 
 void testSendMessageRequest() {
-    std::cout << "\n[Test] Running testSendMessageRequest..." << std::endl;
+    Logger::log("\n[Test] Running testSendMessageRequest...");
 
     ClientTestContext ctx;
 
@@ -100,7 +101,7 @@ void testSendMessageRequest() {
     // bool result = client.sendMessage("bob", "Hello Bob!");
     // assert(result && "[testSendMessageRequest] Failed to send message request.");
 
-    std::cout << "[Test] SendMessageRequest passed." << std::endl;
+    Logger::log("[Test] SendMessageRequest passed.");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -109,7 +110,7 @@ void testSendMessageRequest() {
 // ===================================================
 
 void testReceiveMessageResponse() {
-    std::cout << "\n[Test] Running testReceiveMessageResponse..." << std::endl;
+    Logger::log("\n[Test] Running testReceiveMessageResponse...");
 
     ClientTestContext ctx;
 
@@ -123,7 +124,7 @@ void testReceiveMessageResponse() {
     Client client(connection);
     connection->beginRead();
 
-    std::cout << "[Test] ReceiveMessageResponse placeholder passed." << std::endl;
+    Logger::log("[Test] ReceiveMessageResponse placeholder passed.");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -132,7 +133,7 @@ void testReceiveMessageResponse() {
 // ===================================================
 
 void testHandleDisconnectedClient() {
-    std::cout << "\n[Test] Running testHandleDisconnectedClient..." << std::endl;
+    Logger::log("\n[Test] Running testHandleDisconnectedClient...");
 
     ClientTestContext ctx;
 
@@ -145,7 +146,7 @@ void testHandleDisconnectedClient() {
 
     connection->socket().close(); // simulate disconnect
 
-    std::cout << "[Test] HandleDisconnectedClient placeholder passed." << std::endl;
+    Logger::log("[Test] HandleDisconnectedClient placeholder passed.");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -154,7 +155,7 @@ void testHandleDisconnectedClient() {
 // ===================================================
 
 void testMultipleClientsSimultaneousConnections() {
-    std::cout << "\n[Test] Running testMultipleClientsSimultaneousConnections..." << std::endl;
+    Logger::log("\n[Test] Running testMultipleClientsSimultaneousConnections...");
 
     ClientTestContext ctx;
 
@@ -165,7 +166,7 @@ void testMultipleClientsSimultaneousConnections() {
         connection->beginRead();
     }
 
-    std::cout << "[Test] MultipleClientsSimultaneousConnections passed." << std::endl;
+    Logger::log("[Test] MultipleClientsSimultaneousConnections passed.");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -174,9 +175,9 @@ void testMultipleClientsSimultaneousConnections() {
 // ===================================================
 
 int main() {
-    std::cout << "=============================\n";
-    std::cout << " Running Network Unit Tests\n";
-    std::cout << "=============================\n";
+    Logger::log("=============================\n");
+    Logger::log(" Running Network Unit Tests\n");
+    Logger::log("=============================\n");
 
     unsigned short port = 5555;
     std::thread serverThread;
@@ -192,7 +193,7 @@ int main() {
     testHandleDisconnectedClient();
     testMultipleClientsSimultaneousConnections();
 
-    std::cout << "\nAll tests executed.\n";
+    Logger::log("\nAll tests executed.\n");
 
     if (serverThread.joinable())
         serverThread.detach();

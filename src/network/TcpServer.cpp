@@ -1,10 +1,12 @@
 #include "network/tcpServer.h"
 #include <iostream>
 
+#include "utils/Logger.h"
+
 TcpServer::TcpServer(asio::io_context& io_context, unsigned short port)
     : io_context_(io_context),
       acceptor_(io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
-    std::cout << "[TcpServer] Listening on port " << port << std::endl;
+    Logger::log("[TcpServer] Listening on port " + std::to_string(port));
     startAccept();
 }
 
@@ -23,7 +25,7 @@ void TcpServer::startAccept() {
 
 void TcpServer::handleAccept(TcpConnection::pointer new_connection, const std::error_code& error) {
     if (!error) {
-        std::cout << "[TcpServer] New connection accepted.\n";
+        Logger::log("[TcpServer] New connection accepted.\n");
         active_connections_.push_back(new_connection);
         new_connection->beginRead();
     } else {
@@ -85,7 +87,7 @@ void TcpServer::removeConnection(TcpConnection::pointer connection) {
     auto it = std::find(active_connections_.begin(), active_connections_.end(), connection);
     if (it != active_connections_.end()) {
         active_connections_.erase(it);
-        std::cout << "[TcpServer] Connection removed. Active connections: "
-                  << active_connections_.size() << std::endl;
+        Logger::log("[TcpServer] Connection removed. Active connections: "
+                  + std::to_string(active_connections_.size()));
     }
 }
