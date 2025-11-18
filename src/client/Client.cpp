@@ -44,7 +44,7 @@ bool Client::login(const std::string& username, const std::string& password) {
     return connection_->beginRead();
 }
 
-void Client::sendMessage(const std::string& to, const std::string& message) {
+bool Client::sendMessage(const std::string& to, const std::string& message) {
     if (!connection_ || !connection_->socket().is_open()) {
         std::cerr << "[Client] Cannot send message: no active connection.\n";
         return;
@@ -56,5 +56,5 @@ void Client::sendMessage(const std::string& to, const std::string& message) {
         {"message", message}
     };
 
-    connection_->send(msg.dump());
+    return connection_->send(msg.dump());
 }

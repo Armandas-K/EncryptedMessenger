@@ -98,8 +98,8 @@ void testSendMessageRequest() {
 
     //todo implement sendMessage
 
-    // bool result = client.sendMessage("bob", "Hello Bob!");
-    // assert(result && "[testSendMessageRequest] Failed to send message request.");
+    bool result = client.sendMessage("bob", "Hello Bob!");
+    assert(result && "[testSendMessageRequest] Failed to send message request.");
 
     Logger::log("[Test] SendMessageRequest passed.");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));

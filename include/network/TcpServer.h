@@ -4,7 +4,7 @@
 #include <asio.hpp>
 #include <memory>
 #include <vector>
-#include "client/MessageHandler.h"
+#include "MessageHandler.h"
 #include "network/tcpConnection.h"
 #include "storage/FileStorage.h"
 

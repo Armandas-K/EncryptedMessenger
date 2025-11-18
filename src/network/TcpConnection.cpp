@@ -79,6 +79,7 @@ void TcpConnection::readAction() {
 void TcpConnection::send(const std::string& message) {
     if (message.empty()) {
         std::cerr << "[TcpConnection] Cannot send: empty message.\n";
+        return;
     }
 
     auto self(shared_from_this());

@@ -25,7 +25,7 @@ public:
 
     // send a message to another user through the server.
     // message routing and delivery confirmation will be handled by the server.
-    void sendMessage(const std::string &recipient, const std::string &message);
+    bool sendMessage(const std::string &recipient, const std::string &message);
 
 private:
     std::shared_ptr<TcpConnection> connection_;  // active TCP connection to the server
