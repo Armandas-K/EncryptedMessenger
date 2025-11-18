@@ -7,7 +7,9 @@
 TcpConnection::TcpConnection(asio::io_context& io_context, TcpServer* server)
     : socket_(io_context),
       io_context_(io_context),
-      server_(server) {}
+      server_(server),
+      username_("")
+{}
 
 TcpConnection::pointer TcpConnection::create(asio::io_context& io_context, TcpServer* server) {
     return pointer(new TcpConnection(io_context, server));

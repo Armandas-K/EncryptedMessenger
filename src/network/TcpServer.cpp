@@ -81,6 +81,8 @@ void TcpServer::handleLogin(TcpConnection::pointer connection, const nlohmann::j
         connection->send(R"({"status":"error","message":"Invalid password"})");
         return;
     }
+    // assign username to connection instance
+    connection->setUsername(username);
 
     connection->send(R"({"status":"success","message":"Login successful"})");
 }
