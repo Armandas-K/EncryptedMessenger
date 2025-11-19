@@ -75,8 +75,6 @@ bool MessageHandler::processMessage(
 }
 
 // todo:
-// add username member to tcpconnection constructor
-// all of crypto
 // create user conversation files if not exist e.g. clientA_clientB.json (alphabetical)
 // create append conversation func
 
