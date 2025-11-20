@@ -3,6 +3,8 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/evp.h>
+#include <openssl/bio.h>
+#include <openssl/rand.h>
 #include <openssl/err.h>
 #include <vector>
 #include <iostream>
@@ -118,4 +120,87 @@ std::string CryptoManager::rsaDecrypt(const std::string& ciphertext,
 
     output.resize(len);
     return output;
+}
+
+// -------------AES KEY GENERATION-------------
+
+std::vector<uint8_t> CryptoManager::generateAESKey(size_t keySize) {
+    std::vector<uint8_t> key(keySize);
+    RAND_bytes(key.data(), keySize);
+    return key;
+}
+
+// -------------AES-GCM ENCRYPT-------------
+
+CryptoManager::AESEncrypted CryptoManager::aesEncrypt(
+    const std::string& plaintext,
+    const std::vector<uint8_t>& key
+) {
+    AESEncrypted result;
+
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+
+    // Create 12-byte random IV (recommended for GCM)
+    result.iv.resize(12);
+    RAND_bytes(result.iv.data(), result.iv.size());
+
+    EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
+
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, result.iv.size(), nullptr);
+
+    EVP_EncryptInit_ex(ctx, nullptr, nullptr, key.data(), result.iv.data());
+
+    result.ciphertext.resize(plaintext.size());
+
+    int outLen;
+    EVP_EncryptUpdate(ctx,
+                      result.ciphertext.data(),
+                      &outLen,
+                      (unsigned char*)plaintext.data(),
+                      plaintext.size());
+
+    int finalLen;
+    EVP_EncryptFinal_ex(ctx, result.ciphertext.data() + outLen, &finalLen);
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    return result;
+}
+
+// -------------AES-GCM DECRYPT-------------
+
+std::string CryptoManager::aesDecrypt(const std::vector<uint8_t>& key,
+                                      const std::vector<uint8_t>& iv,
+                                      const std::vector<uint8_t>& ciphertext) {
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
+
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, iv.size(), nullptr);
+
+    EVP_DecryptInit_ex(ctx, nullptr, nullptr, key.data(), iv.data());
+
+    std::string plaintext(ciphertext.size(), '\0');
+
+    int outLen;
+    if (!EVP_DecryptUpdate(ctx,
+                           (unsigned char*)plaintext.data(),
+                           &outLen,
+                           ciphertext.data(),
+                           ciphertext.size())) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("AES decrypt update failed");
+    }
+
+    int finalLen;
+    if (!EVP_DecryptFinal_ex(ctx,
+                             (unsigned char*)plaintext.data() + outLen,
+                             &finalLen)) {
+        EVP_CIPHER_CTX_free(ctx);
+        throw std::runtime_error("AES decrypt final failed (auth error)");
+    }
+
+    EVP_CIPHER_CTX_free(ctx);
+
+    plaintext.resize(outLen + finalLen);
+    return plaintext;
 }
