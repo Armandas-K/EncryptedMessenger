@@ -57,3 +57,65 @@ CryptoManager::RSAKeyPair CryptoManager::generateRSAKeyPair() {
 
     return kp;
 }
+
+// -------------RSA ENCRYPT-------------
+
+std::string CryptoManager::rsaEncrypt(const std::string& plaintext,
+                                      const std::string& publicKeyPem) {
+    BIO* bio = BIO_new_mem_buf(publicKeyPem.data(), publicKeyPem.size());
+    RSA* pubKey = PEM_read_bio_RSA_PUBKEY(bio, nullptr, nullptr, nullptr);
+    BIO_free(bio);
+
+    if (!pubKey)
+        throw std::runtime_error("Failed to load public key PEM");
+
+    std::string output;
+    output.resize(RSA_size(pubKey));
+
+    int len = RSA_public_encrypt(
+        plaintext.size(),
+        (const unsigned char*)plaintext.data(),
+        (unsigned char*)output.data(),
+        pubKey,
+        RSA_PKCS1_OAEP_PADDING
+    );
+
+    RSA_free(pubKey);
+
+    if (len == -1)
+        throw std::runtime_error("RSA_public_encrypt failed");
+
+    output.resize(len);
+    return output;
+}
+
+// -------------RSA DECRYPT-------------
+
+std::string CryptoManager::rsaDecrypt(const std::string& ciphertext,
+                                      const std::string& privateKeyPem) {
+    BIO* bio = BIO_new_mem_buf(privateKeyPem.data(), privateKeyPem.size());
+    RSA* privKey = PEM_read_bio_RSAPrivateKey(bio, nullptr, nullptr, nullptr);
+    BIO_free(bio);
+
+    if (!privKey)
+        throw std::runtime_error("Failed to load private key PEM");
+
+    std::string output;
+    output.resize(RSA_size(privKey));
+
+    int len = RSA_private_decrypt(
+        ciphertext.size(),
+        (const unsigned char*)ciphertext.data(),
+        (unsigned char*)output.data(),
+        privKey,
+        RSA_PKCS1_OAEP_PADDING
+    );
+
+    RSA_free(privKey);
+
+    if (len == -1)
+        throw std::runtime_error("RSA_private_decrypt failed");
+
+    output.resize(len);
+    return output;
+}
