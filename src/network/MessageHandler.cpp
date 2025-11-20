@@ -3,7 +3,7 @@
 #include "utils/Logger.h"
 
 MessageHandler::MessageHandler(TcpServer* server, FileStorage& storage)
-    : server_(server), storage_(storage) {}
+    : server_(server), storage_(storage), crypto_() {}
 
 std::string MessageHandler::getUsernameFromConnection(TcpConnection::pointer conn) {
     // todo attach username to connection after login
@@ -44,8 +44,14 @@ bool MessageHandler::processMessage(
     }
 
     // encrypt message with AES
-    std::string aes_key = crypto_.generateAESKey();
-    std::string ciphertext = crypto_.aesEncrypt(message, aes_key);
+    std::vector<uint8_t> aes_key = crypto_.generateAESKey();
+    CryptoManager::AESEncrypted ciphertext = crypto_.aesEncrypt(message, aes_key);
+
+    // Convert AES key to string using black magic
+    std::string aes_key_str(
+        reinterpret_cast<char*>(aes_key.data()),
+        aes_key.size()
+    );
 
     // encrypt AES key for both users
     std::string aes_for_sender    = crypto_.rsaEncrypt(aes_key, sender_pub);

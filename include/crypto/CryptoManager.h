@@ -44,8 +44,8 @@ public:
     };
 
     // Encrypt with AES-GCM
-    AESEncrypted aesEncrypt(const std::vector<uint8_t>& key,
-                            const std::string& plaintext);
+    AESEncrypted aesEncrypt(const std::string& plaintext,
+                            const std::vector<uint8_t>& key);
 
     std::string aesDecrypt(const std::vector<uint8_t>& key,
                            const std::vector<uint8_t>& iv,
