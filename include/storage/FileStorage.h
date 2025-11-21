@@ -22,6 +22,9 @@ public:
     // verify username and hashed password against users.json data
     bool loginUser(const std::string& username, const std::string& password_hash);
 
+    // return public key PEM for user, or empty string on failure
+    std::string getUserPublicKey(const std::string& username);
+
     // check if username is taken
     bool userExists(const std::string & username);
 

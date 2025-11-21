@@ -72,8 +72,7 @@ bool FileStorage::createUserKeyFiles(
     std::lock_guard<std::mutex> lock(file_mutex_);
 
     // build "keys/username"
-    std::string userKeyDir = KEY_PATH;
-    userKeyDir = userKeyDir + "/" + username;
+    std::string userKeyDir = std::string(KEY_PATH) + "/" + username;
 
     // create user directory in data/keys/
     _mkdir(userKeyDir.c_str());
@@ -116,6 +115,26 @@ bool FileStorage::loginUser(const std::string& username, const std::string& pass
         }
     }
     return false;
+}
+
+std::string FileStorage::getUserPublicKey(const std::string& username) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+
+    // go to keys/username/public.pem
+    std::string pubPath = std::string(KEY_PATH) + "/" + username + "/public.pem";
+
+    std::ifstream file(pubPath);
+    if (!file.is_open()) {
+        std::cerr << "[FileStorage] Failed to open public key: " << pubPath << "\n";
+        return "";
+    }
+
+    std::string pem(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
+
+    return pem;
 }
 
 bool FileStorage::userExists(const std::string &username) {
