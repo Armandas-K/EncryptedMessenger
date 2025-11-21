@@ -1,11 +1,13 @@
 #include "storage/FileStorage.h"
 #include <iostream>
+#include <direct.h>
+#include "utils/Logger.h"
 
 FileStorage::FileStorage() {
-    load();
+    loadUser();
 }
 
-bool FileStorage::load() {
+bool FileStorage::loadUser() {
     std::lock_guard<std::mutex> lock(file_mutex_);
     std::ifstream file(userFilePath_);
 
@@ -13,7 +15,7 @@ bool FileStorage::load() {
         std::cerr << "[FileStorage] Could not open users file, creating new one.\n";
         data_["users"] = nlohmann::json::array();
         file.close();
-        save();
+        saveUser();
         return true;
     }
 
@@ -22,7 +24,7 @@ bool FileStorage::load() {
         std::cerr << "[FileStorage] Empty users file, reinitializing.\n";
         data_["users"] = nlohmann::json::array();
         file.close();
-        save();
+        saveUser();
         return true;
     }
 
@@ -32,14 +34,14 @@ bool FileStorage::load() {
         std::cerr << "[FileStorage] Invalid JSON format in users file.\n";
         file.close();
         data_["users"] = nlohmann::json::array();
-        save();
+        saveUser();
         return false;
     }
 
     return true;
 }
 
-bool FileStorage::save() {
+bool FileStorage::saveUser() {
     std::ofstream file(userFilePath_);
     if (!file.is_open()) return false;
 
@@ -61,7 +63,49 @@ bool FileStorage::createUser(const std::string& username, const std::string& pas
         {"password_hash", password_hash}
     };
     data_["users"].push_back(new_user);
-    return save();
+    return saveUser();
+}
+
+bool FileStorage::createUserKeyFiles(
+    const std::string& username)
+{
+    std::lock_guard<std::mutex> lock(file_mutex_);
+
+    // build "keys/username"
+    std::string userKeyDir = KEY_PATH;
+    userKeyDir = userKeyDir + "/" + username;
+
+    // create user directory in data/keys/
+    _mkdir(userKeyDir.c_str());
+
+    // generate RSA keypair
+    CryptoManager crypto;
+    CryptoManager::RSAKeyPair keys;
+    try {
+        keys = crypto.generateRSAKeyPair();
+    } catch (const std::exception& e) {
+        std::cerr << "[FileStorage] RSA key generation failed: " << e.what() << std::endl;
+        return false;
+    }
+
+    std::string pubPath  = userKeyDir + "/public.pem";
+    std::string privPath = userKeyDir + "/private.pem";
+
+    // write public key
+    {
+        std::ofstream out(pubPath);
+        if (!out.is_open()) return false;
+        out << keys.publicKeyPem;
+    }
+
+    // write private key
+    {
+        std::ofstream out(privPath);
+        if (!out.is_open()) return false;
+        out << keys.privateKeyPem;
+    }
+
+    return true;
 }
 
 bool FileStorage::loginUser(const std::string& username, const std::string& password_hash) {

@@ -64,7 +64,19 @@ void TcpServer::handleCreateAccount(TcpConnection::pointer connection, const nlo
         return;
     }
 
-    storage_.createUser(username, password_hash);
+    // Create user entry in users.json
+    if (!storage_.createUser(username, password_hash)) {
+        connection->send(R"({"status":"error","message":"Failed to create user"})");
+        return;
+    }
+
+    // Create RSA keypair + write to keys/username/
+    if (!storage_.createUserKeyFiles(username)) {
+        connection->send(R"({"status":"error","message":"Failed to create user key files"})");
+        return;
+    }
+
+    // Success
     connection->send(R"({"status":"success","message":"Account created"})");
 }
 

@@ -5,6 +5,7 @@
 #include <json.hpp>
 #include <mutex>
 #include <fstream>
+#include "crypto/CryptoManager.h"
 
 // manages user data stored in data/users.json
 // provides thread-safe account creation and validation
@@ -15,6 +16,9 @@ public:
     // add new user, returns true if created successfully, false if username exists
     bool createUser(const std::string& username, const std::string& password_hash);
 
+    // make keys for encryption on account creation
+    bool createUserKeyFiles(const std::string& username);
+
     // verify username and hashed password against users.json data
     bool loginUser(const std::string& username, const std::string& password_hash);
 
@@ -23,10 +27,10 @@ public:
 
 private:
     // load users.json data into memory
-    bool load();
+    bool loadUser();
 
     // write users.json data to storage
-    bool save();
+    bool saveUser();
 
 private:
     // hardcoded path to user account file

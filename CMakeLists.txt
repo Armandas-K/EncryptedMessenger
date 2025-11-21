@@ -87,4 +87,8 @@ set(USER_DATA_PATH "${CMAKE_SOURCE_DIR}/data/users.json")
 
 # Pass to C++ as a macro
 set(USER_DATA_PATH "${CMAKE_SOURCE_DIR}/data/users.json")
+set(KEY_DATA_PATH "${CMAKE_SOURCE_DIR}/data/keys")
+set(MESSAGE_DATA_PATH "${CMAKE_SOURCE_DIR}/data/messages")
 add_compile_definitions(USERS_PATH="${USER_DATA_PATH}")
+add_compile_definitions(KEY_PATH="${KEY_DATA_PATH}")
+add_compile_definitions(MESSAGE_PATH="${MESSAGE_DATA_PATH}")
