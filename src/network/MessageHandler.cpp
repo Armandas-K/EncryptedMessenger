@@ -54,8 +54,8 @@ bool MessageHandler::processMessage(
     );
 
     // encrypt AES key for both users
-    std::string aes_for_sender    = crypto_.rsaEncrypt(aes_key, sender_pub);
-    std::string aes_for_recipient = crypto_.rsaEncrypt(aes_key, recipient_pub);
+    std::string aes_for_sender    = crypto_.rsaEncrypt(aes_key_str, sender_pub);
+    std::string aes_for_recipient = crypto_.rsaEncrypt(aes_key_str, recipient_pub);
 
     long timestamp = std::chrono::system_clock::to_time_t(
         std::chrono::system_clock::now()
