@@ -156,11 +156,17 @@ CryptoManager::AESEncrypted CryptoManager::aesEncrypt(
     EVP_EncryptUpdate(ctx,
                       result.ciphertext.data(),
                       &outLen,
-                      (unsigned char*)plaintext.data(),
+                      (const uint8_t*)plaintext.data(),
                       plaintext.size());
 
     int finalLen;
     EVP_EncryptFinal_ex(ctx, result.ciphertext.data() + outLen, &finalLen);
+
+    result.ciphertext.resize(outLen + finalLen);
+
+    // 16 byte GCM auth tag
+    result.tag.resize(16);
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, result.tag.data());
 
     EVP_CIPHER_CTX_free(ctx);
 
@@ -171,7 +177,8 @@ CryptoManager::AESEncrypted CryptoManager::aesEncrypt(
 
 std::string CryptoManager::aesDecrypt(const std::vector<uint8_t>& key,
                                       const std::vector<uint8_t>& iv,
-                                      const std::vector<uint8_t>& ciphertext) {
+                                      const std::vector<uint8_t>& ciphertext,
+                                      const std::vector<uint8_t>& tag) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     EVP_DecryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
 
@@ -183,7 +190,7 @@ std::string CryptoManager::aesDecrypt(const std::vector<uint8_t>& key,
 
     int outLen;
     if (!EVP_DecryptUpdate(ctx,
-                           (unsigned char*)plaintext.data(),
+                           (uint8_t*)plaintext.data(),
                            &outLen,
                            ciphertext.data(),
                            ciphertext.size())) {
@@ -191,9 +198,11 @@ std::string CryptoManager::aesDecrypt(const std::vector<uint8_t>& key,
         throw std::runtime_error("AES decrypt update failed");
     }
 
-    int finalLen;
+    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, tag.size(), (void*)tag.data());
+
+    int finalLen = 0;
     if (!EVP_DecryptFinal_ex(ctx,
-                             (unsigned char*)plaintext.data() + outLen,
+                             (uint8_t*)plaintext.data() + outLen,
                              &finalLen)) {
         EVP_CIPHER_CTX_free(ctx);
         throw std::runtime_error("AES decrypt final failed (auth error)");

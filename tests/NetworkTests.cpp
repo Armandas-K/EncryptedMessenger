@@ -96,8 +96,6 @@ void testSendMessageRequest() {
     Client client(connection);
     connection->beginRead();
 
-    //todo implement sendMessage
-
     bool result = client.sendMessage("bob", "Hello Bob!");
     assert(result && "[testSendMessageRequest] Failed to send message request.");
 

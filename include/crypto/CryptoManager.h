@@ -50,7 +50,8 @@ public:
 
     std::string aesDecrypt(const std::vector<uint8_t>& key,
                            const std::vector<uint8_t>& iv,
-                           const std::vector<uint8_t>& ciphertext);
+                           const std::vector<uint8_t>& ciphertext,
+                           const std::vector<uint8_t>& tag);
 
 private:
     // cache keys for performance - could implement later

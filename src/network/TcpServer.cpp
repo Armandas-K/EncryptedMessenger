@@ -5,7 +5,10 @@
 
 TcpServer::TcpServer(asio::io_context& io_context, unsigned short port)
     : io_context_(io_context),
-      acceptor_(io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)) {
+      acceptor_(io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)),
+      storage_(),
+      messageHandler_(this, storage_)
+{
     Logger::log("[TcpServer] Listening on port " + std::to_string(port));
     startAccept();
 }
@@ -107,8 +110,8 @@ void TcpServer::handleSendMessage(TcpConnection::pointer connection, const nlohm
         connection->send(R"({"status":"error","message":"Invalid message format"})");
         return;
     }
-    // todo implement message handler
-    // messageHandler_.processMessage(connection, to, message);
+
+    messageHandler_.processMessage(connection, to, message);
 }
 
 void TcpServer::removeConnection(TcpConnection::pointer connection) {
