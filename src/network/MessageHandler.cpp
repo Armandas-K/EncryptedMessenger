@@ -6,7 +6,6 @@ MessageHandler::MessageHandler(TcpServer* server, FileStorage& storage)
     : server_(server), storage_(storage), crypto_() {}
 
 std::string MessageHandler::getUsernameFromConnection(TcpConnection::pointer conn) {
-    // todo attach username to connection after login
     return conn->getUsername();
 }
 
@@ -60,8 +59,7 @@ bool MessageHandler::processMessage(
     long timestamp = std::chrono::system_clock::to_time_t(
         std::chrono::system_clock::now()
     );
-    // todo
-    // store message in conversation file
+
     bool stored = storage_.appendConversationMessage(
         from,
         to,
@@ -79,27 +77,3 @@ bool MessageHandler::processMessage(
     sender->send(R"({"status":"success","message":"Message stored"})");
     return true;
 }
-
-// todo:
-// create user conversation files if not exist e.g. clientA_clientB.json (alphabetical)
-// create append conversation func
-
-// example file structure
-/*
-{
-    "participants": ["alice", "bob"],
-    "messages": [
-        {
-            "sender": "alice",
-            "ciphertext": "<AES encrypted text>",
-            "key_for_alice": "<AES key encrypted with Alice pubkey>",
-            "key_for_bob": "<AES key encrypted with Bob pubkey>",
-            "timestamp": 1710001000,
-            "read_by": {
-                "alice": true,
-                "bob": false
-            }
-        }
-    ]
-}
-*/

@@ -41,6 +41,7 @@ public:
     struct AESEncrypted {
         std::vector<uint8_t> iv;
         std::vector<uint8_t> ciphertext;
+        std::vector<uint8_t> tag;
     };
 
     // Encrypt with AES-GCM

@@ -146,3 +146,69 @@ bool FileStorage::userExists(const std::string &username) {
     }
     return false;
 }
+
+bool FileStorage::appendConversationMessage(
+    const std::string& from,
+    const std::string& to,
+    const CryptoManager::AESEncrypted& ciphertext,
+    const std::string& aesForSender,
+    const std::string& aesForRecipient,
+    long timestamp
+) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+
+    // build folder: messages/userA_userB
+    // folder name always alphabetical
+    std::string folderName =
+        (from < to) ? (from + "_" + to) : (to + "_" + from);
+
+    std::string fullDir = std::string(MESSAGE_PATH) + "/" + folderName;
+
+    // create directory if missing
+    _mkdir(fullDir.c_str());
+
+    // path to conversation file
+    std::string convoFile = fullDir + "/conversation.json";
+
+    nlohmann::json convoJson;
+
+    // if file exists load it
+    {
+        std::ifstream in(convoFile);
+        if (in.is_open() && in.peek() != std::ifstream::traits_type::eof()) {
+            try {
+                in >> convoJson;
+            } catch (...) {
+                std::cerr << "[FileStorage] Invalid JSON in conversation, resetting.\n";
+                convoJson = nlohmann::json::object();
+            }
+        }
+    }
+
+    // ensure structure exists
+    if (!convoJson.contains("messages"))
+        convoJson["messages"] = nlohmann::json::array();
+
+    // -------- Append new message --------
+    nlohmann::json entry;
+    entry["from"]            = from;
+    entry["to"]              = to;
+    entry["timestamp"]       = timestamp;
+    entry["ciphertext"]      = ciphertext.ciphertext;
+    entry["iv"]              = ciphertext.iv;
+    entry["tag"]             = ciphertext.tag;   // if GCM
+    entry["aes_for_sender"]  = aesForSender;
+    entry["aes_for_recipient"] = aesForRecipient;
+
+    convoJson["messages"].push_back(entry);
+
+    // -------- Save back to file --------
+    std::ofstream out(convoFile);
+    if (!out.is_open()) {
+        std::cerr << "[FileStorage] Failed to write conversation file.\n";
+        return false;
+    }
+
+    out << convoJson.dump(4);
+    return true;
+}

@@ -28,6 +28,16 @@ public:
     // check if username is taken
     bool userExists(const std::string & username);
 
+    // append to message json shared between 2 users
+    bool appendConversationMessage(
+    const std::string& from,
+    const std::string& to,
+    const CryptoManager::AESEncrypted& ciphertext,
+    const std::string& aesForSender,
+    const std::string& aesForRecipient,
+    long timestamp
+);
+
 private:
     // load users.json data into memory
     bool loadUser();
