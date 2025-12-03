@@ -185,11 +185,17 @@ int main() {
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     testCreateAccountRequest();
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testLoginRequest();
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testSendMessageRequest();
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testReceiveMessageResponse();
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testHandleDisconnectedClient();
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testMultipleClientsSimultaneousConnections();
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     Logger::log("\nAll tests executed.\n");
 
