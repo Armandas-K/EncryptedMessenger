@@ -6,9 +6,13 @@
 
 class ClientTestContext {
 public:
-    ClientTestContext() : io_thread_([this]() { io_.run(); }) {}
+    ClientTestContext()
+        : work_(asio::make_work_guard(io_)),
+          io_thread_([this]() { io_.run(); })
+    {}
 
     ~ClientTestContext() {
+        work_.reset();
         io_.stop();
         if (io_thread_.joinable())
             io_thread_.join();
@@ -18,6 +22,7 @@ public:
 
 private:
     asio::io_context io_;
+    asio::executor_work_guard<asio::io_context::executor_type> work_;
     std::thread io_thread_;
 };
 
