@@ -156,7 +156,7 @@ bool FileStorage::appendConversationMessage(
     long timestamp
 ) {
     std::lock_guard<std::mutex> lock(file_mutex_);
-
+    std::cout << "appendConvMsg called" << "\n";
     // build folder: messages/userA_userB
     // folder name always alphabetical
     std::string folderName =
@@ -164,8 +164,15 @@ bool FileStorage::appendConversationMessage(
 
     std::string fullDir = std::string(MESSAGE_PATH) + "/" + folderName;
 
-    // create directory if missing
-    _mkdir(fullDir.c_str());
+    /// Create directories recursively
+    std::error_code ec;
+    std::filesystem::create_directories(fullDir, ec);
+
+    if (ec) {
+        std::cerr << "[FileStorage] Failed to create directory: "
+                  << fullDir << " (" << ec.message() << ")\n";
+        return false;
+    }
 
     // path to conversation file
     std::string convoFile = fullDir + "/conversation.json";

@@ -30,6 +30,8 @@ public:
 
     // set username when user logs in
     void setUsername(const std::string& username) { username_ = username; }
+
+    // return username of connected client
     const std::string& getUsername() const { return username_; }
 
     // connect to socket

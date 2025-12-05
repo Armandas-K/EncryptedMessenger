@@ -96,11 +96,14 @@ void testSendMessageRequest() {
     Client client(connection);
     connection->beginRead();
 
-    bool result = client.sendMessage("bob", "Hello Bob!");
-    assert(result && "[testSendMessageRequest] Failed to send message request.");
+    assert(client.login("test_user", "secure_password")
+           && "[testSendMessageRequest] Login failed");
+
+    assert(client.sendMessage("bob", "Hello Bob!")
+           && "[testSendMessageRequest] Failed to send message");
 
     Logger::log("[Test] SendMessageRequest passed.");
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
 
 // ===================================================
