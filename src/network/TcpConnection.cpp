@@ -53,6 +53,7 @@ void TcpConnection::readAction() {
                     handleAction(json_msg);
                 } catch (std::exception& e) {
                     std::cerr << "[TcpConnection] Invalid JSON: " << e.what() << std::endl;
+                    std::cerr << data << std::endl;
                 }
 
                 // keep reading for next messages
@@ -138,12 +139,14 @@ void TcpConnection::disconnect() {
 }
 
 void TcpConnection::handleAction(const nlohmann::json& message) {
-    if (!message.contains("action")) {
-        std::cerr << "[TcpConnection] Missing action field.\n";
+    // client request with "action" field
+    if (message.contains("action")) {
+        if (server_) {
+            server_->handleAction(shared_from_this(), message);
+        }
         return;
     }
 
-    if (server_) {
-        server_->handleAction(shared_from_this(), message);
-    }
+    // server response
+    Logger::log("[TcpConnection] Server response: " + message.dump());
 }
