@@ -3,11 +3,20 @@
 #include <sstream>
 #include <iomanip>
 #include <iostream>
+#include "utils/Logger.h"
 
 using json = nlohmann::json;
 
 Client::Client(std::shared_ptr<TcpConnection> connection)
-    : connection_(std::move(connection)) {}
+    : connection_(std::move(connection))
+{
+    // install callback so tcpConnection can forward server responses to client
+    connection_->onServerResponse_ =
+        [this](const std::string& status, const std::string& message)
+        {
+            this->handleResponse(status, message);
+        };
+}
 
 std::string Client::hashPassword(const std::string& password) {
     unsigned char hash[SHA256_DIGEST_LENGTH];
@@ -24,7 +33,9 @@ bool Client::createAccount(const std::string &username, const std::string &passw
         return false;
     }
 
-    nlohmann::json msg = {
+    pendingAction_ = "create_account";
+
+    json msg = {
         {"action", "create_account"},
         {"username", username},
         {"password_hash", hashPassword(password)}
@@ -35,11 +46,20 @@ bool Client::createAccount(const std::string &username, const std::string &passw
 }
 
 bool Client::login(const std::string& username, const std::string& password) {
+    if (!connection_ || !connection_->socket().is_open()) {
+        std::cerr << "[Client] Cannot login: no active connection.\n";
+        return false;
+    }
+
+    pendingAction_ = "login";
+    lastLoginUsername_ = username;
+
     json msg = {
         {"action", "login"},
         {"username", username},
         {"password_hash", hashPassword(password)}
     };
+
     connection_->send(msg.dump());
     return connection_->beginRead();
 }
@@ -50,7 +70,9 @@ bool Client::sendMessage(const std::string& to, const std::string& message) {
         return false;
     }
 
-    nlohmann::json msg = {
+    pendingAction_ = "send_message";
+
+    json msg = {
         {"action", "send_message"},
         {"to", to},
         {"message", message}
@@ -58,4 +80,29 @@ bool Client::sendMessage(const std::string& to, const std::string& message) {
 
     connection_->send(msg.dump());
     return true;
+}
+
+void Client::handleResponse(const std::string& status, const std::string& message) {
+    if (status == "success")
+        Logger::log("[Client] SUCCESS: " + message);
+    else
+        std::cerr << "[Client] ERROR: " << message << "\n";
+
+    // action-specific handling
+    if (pendingAction_ == "login" && status == "success") {
+        username_ = lastLoginUsername_;
+        Logger::log("[Client] Logged in as: " + username_);
+    }
+
+    if (pendingAction_ == "create_account" && status == "success") {
+        Logger::log("[Client] Account created successfully.");
+    }
+
+    if (pendingAction_ == "send_message") {
+        if (status == "success")
+            Logger::log("[Client] Message delivered.");
+    }
+
+    // clear pending action
+    pendingAction_.clear();
 }

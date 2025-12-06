@@ -40,6 +40,9 @@ public:
     // close the connection and notify the server.
     void disconnect();
 
+    // callback for client
+    std::function<void(const std::string& status, const std::string& message)> onServerResponse_;
+
 private:
     TcpConnection(asio::io_context& io_context, TcpServer* server);
 

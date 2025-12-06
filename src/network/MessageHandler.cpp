@@ -20,7 +20,6 @@ bool MessageHandler::processMessage(
     std::string from = sender->getUsername();
 
     if (from.empty()) {
-        std::cout << "proccessMsg called444" << "\n";
         sender->send(R"({"status":"error","message":"User not logged in"})");
         return false;
     }
