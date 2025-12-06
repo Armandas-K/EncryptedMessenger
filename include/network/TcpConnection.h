@@ -54,6 +54,7 @@ private:
     asio::io_context& io_context_;   // used for I/O
     TcpServer* server_;              // reference to parent server
     std::array<char, 1024> buffer_;  // temp buffer for reads
+    std::string incomingBuffer_;     // persistent buffer for data
 };
 
 #endif //ENCRYPTEDMESSENGER_TCPCONNECTION_H

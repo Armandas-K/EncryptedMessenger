@@ -45,36 +45,56 @@ void TcpConnection::readAction() {
     socket_.async_read_some(
         asio::buffer(buffer_),
         [this, self](std::error_code ec, std::size_t length) {
-            if (!ec) {
-                std::string data(buffer_.data(), length);
-
-                try {
-                    auto json_msg = nlohmann::json::parse(data);
-                    handleAction(json_msg);
-                } catch (std::exception& e) {
-                    std::cerr << "[TcpConnection] Invalid JSON: " << e.what() << std::endl;
-                    std::cerr << data << std::endl;
-                }
-
-                // keep reading for next messages
-                readAction();
-            }
-            else
-            {
-                // expected disconnects
-                if (ec == asio::error::eof ||
-                    ec == asio::error::connection_reset ||
-                    ec == asio::error::connection_aborted)
-                {
-                    // silently disconnect
-                    disconnect();
-                    return;
-                }
-
-                // real errors
-                std::cerr << "[TcpConnection] Read error: " << ec.message() << "\n";
+            if (ec) {
                 disconnect();
+                return;
             }
+
+            // append received bytes to stream buffer
+            incomingBuffer_.append(buffer_.data(), length);
+
+            size_t start = 0;
+            int depth = 0;
+
+            for (size_t i = 0; i < incomingBuffer_.size(); ++i) {
+
+                char c = incomingBuffer_[i];
+
+                if (c == '{') {
+                    if (depth == 0) {
+                        start = i;  // potential start of JSON object
+                    }
+                    depth++;
+                }
+                else if (c == '}') {
+                    depth--;
+                }
+
+                // if depth = 0 means complete json object
+                if (depth == 0 && c == '}') {
+
+                    std::string jsonStr = incomingBuffer_.substr(start, i - start + 1);
+
+                    try {
+                        nlohmann::json msg = nlohmann::json::parse(jsonStr);
+                        handleAction(msg);
+                    }
+                    catch (std::exception& e) {
+                        std::cerr << "[TcpConnection] JSON parse error: " << e.what() << "\n";
+                    }
+                }
+            }
+
+            // remove json objects
+            // if depth != 0, keep partial object
+            if (depth == 0) {
+                incomingBuffer_.clear();
+            } else {
+                incomingBuffer_ = incomingBuffer_.substr(start);
+            }
+
+            // continue reading
+            readAction();
         }
     );
 }
