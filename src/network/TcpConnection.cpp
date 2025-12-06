@@ -159,14 +159,37 @@ void TcpConnection::disconnect() {
 }
 
 void TcpConnection::handleAction(const nlohmann::json& message) {
-    // client request with "action" field
+
+    // request (client to server)
     if (message.contains("action")) {
         if (server_) {
             server_->handleAction(shared_from_this(), message);
+        } else {
+            std::cerr << "[TcpConnection] Received request but no server is attached.\n";
         }
         return;
     }
 
-    // server response
-    Logger::log("[TcpConnection] Server response: " + message.dump());
+    // response (server to client)
+    if (message.contains("status")) {
+        handleServerResponse(message);
+        return;
+    }
+
+    // unknown message
+    std::cerr << "[TcpConnection] Unknown message type: " << message.dump() << "\n";
+}
+
+void TcpConnection::handleServerResponse(const nlohmann::json& msg) {
+    std::string status  = msg.value("status", "unknown");
+    std::string message = msg.value("message", "");
+
+    if (status == "success") {
+        Logger::log("[TcpConnection] Server SUCCESS: " + message);
+    } else if (status == "error") {
+        std::cerr << "[TcpConnection] Server ERROR: " << message << "\n";
+    } else {
+        std::cout << "[TcpConnection] Server Response: " << message << "\n";
+    }
+    // could route it to Client::onResponse() in the future
 }

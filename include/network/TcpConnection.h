@@ -49,6 +49,9 @@ private:
     // called when a complete json message is received.
     void handleAction(const nlohmann::json& message);
 
+    // handles server to client responses
+    void handleServerResponse(const nlohmann::json &msg);
+
     std::string username_;           // assign when login
     asio::ip::tcp::socket socket_;   // active socket for this client
     asio::io_context& io_context_;   // used for I/O

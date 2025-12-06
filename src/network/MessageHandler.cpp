@@ -18,20 +18,21 @@ bool MessageHandler::processMessage(
 
     // server trusted sender
     std::string from = sender->getUsername();
-    std::cout << "proccessMsg called1" << "\n";
+
     if (from.empty()) {
         std::cout << "proccessMsg called444" << "\n";
         sender->send(R"({"status":"error","message":"User not logged in"})");
         return false;
     }
-    std::cout << "proccessMsg called2" << "\n";
+
     if (to.empty() || message.empty()) {
         sender->send(R"({"status":"error","message":"Missing fields"})");
         return false;
     }
-    std::cout << "proccessMsg called3" << "\n";
+
     // validate recipient exists
     if (!storage_.userExists(to)) {
+        std::cout << "recipient does not exist error" << "\n";
         sender->send(R"({"status":"error","message":"Recipient does not exist"})");
         return false;
     }
