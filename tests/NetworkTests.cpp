@@ -9,7 +9,7 @@
 #include "utils/Logger.h"
 
 // ===================================================
-// Simple Network Tests
+// Set Up TcpServer
 // ===================================================
 
 void startServer(unsigned short port, std::thread& serverThread) {
@@ -27,6 +27,12 @@ void startServer(unsigned short port, std::thread& serverThread) {
 // ===================================================
 // ACCOUNT CREATION
 // ===================================================
+
+std::string makeUser() {
+    auto now = std::chrono::system_clock::now().time_since_epoch();
+    long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
+    return "test_user_" + std::to_string(ms);
+}
 
 void testCreateAccountRequest() {
     Logger::log("\n[Test] Running testCreateAccountRequest...");

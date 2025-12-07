@@ -42,7 +42,8 @@ bool Client::createAccount(const std::string &username, const std::string &passw
     };
 
     connection_->send(msg.dump());
-    return connection_->beginRead();
+    connection_->beginRead();
+    return waitForResponse();
 }
 
 bool Client::login(const std::string& username, const std::string& password) {
@@ -61,7 +62,8 @@ bool Client::login(const std::string& username, const std::string& password) {
     };
 
     connection_->send(msg.dump());
-    return connection_->beginRead();
+    connection_->beginRead();
+    return waitForResponse();
 }
 
 bool Client::sendMessage(const std::string& to, const std::string& message) {
@@ -79,30 +81,48 @@ bool Client::sendMessage(const std::string& to, const std::string& message) {
     };
 
     connection_->send(msg.dump());
-    return true;
+    return waitForResponse();
 }
 
 void Client::handleResponse(const std::string& status, const std::string& message) {
-    if (status == "success")
-        Logger::log("[Client] SUCCESS: " + message);
-    else
-        std::cerr << "[Client] ERROR: " << message << "\n";
+    lastStatus_ = status;
+    lastMessage_ = message;
 
     // action-specific handling
+    // clear pending action
     if (pendingAction_ == "login" && status == "success") {
         username_ = lastLoginUsername_;
         Logger::log("[Client] Logged in as: " + username_);
+        pendingAction_.clear();
+        return;
     }
 
     if (pendingAction_ == "create_account" && status == "success") {
         Logger::log("[Client] Account created successfully.");
+        pendingAction_.clear();
+        return;
     }
 
-    if (pendingAction_ == "send_message") {
-        if (status == "success")
-            Logger::log("[Client] Message delivered.");
+    if (pendingAction_ == "send_message" && status == "success") {
+        Logger::log("[Client] Message delivered.");
+        pendingAction_.clear();
+        return;
     }
 
-    // clear pending action
+    // general logging
+    if (status == "success") {
+        Logger::log("[Client] SUCCESS: " + message);
+    } else if (status == "error") {
+        std::cerr << "[Client] ERROR: " << message << "\n";
+    } else {
+        Logger::log("[Client] Response: " + message);
+    }
+
+    // just in case
     pendingAction_.clear();
+}
+
+bool Client::waitForResponse() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(60));
+    return lastStatus_ == "success";
 }

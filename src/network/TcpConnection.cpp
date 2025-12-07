@@ -184,8 +184,18 @@ void TcpConnection::handleServerResponse(const nlohmann::json& msg) {
     std::string status  = msg.value("status", "unknown");
     std::string message = msg.value("message", "");
 
-    // callback into client, if exists
-    if (onServerResponse_ != nullptr) {
+    // forward response to client callback
+    if (onServerResponse_) {
         onServerResponse_(status, message);
+        return;
+    }
+
+    // fallback logging if no client callback
+    if (status == "success") {
+        Logger::log("[TcpConnection] Server SUCCESS: " + message);
+    } else if (status == "error") {
+        std::cerr << "[TcpConnection] Server ERROR: " << message << "\n";
+    } else {
+        std::cout << "[TcpConnection] Server Response: " << message << "\n";
     }
 }
