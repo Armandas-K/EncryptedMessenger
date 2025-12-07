@@ -31,7 +31,6 @@ bool MessageHandler::processMessage(
 
     // validate recipient exists
     if (!storage_.userExists(to)) {
-        std::cout << "recipient does not exist error" << "\n";
         sender->send(R"({"status":"error","message":"Recipient does not exist"})");
         return false;
     }
@@ -71,7 +70,7 @@ bool MessageHandler::processMessage(
         aes_for_recipient,
         timestamp
     );
-
+    std::cout << "lsakdjfhaksljdfhlksadjhflksajdhflkasjdfhlkasdjfh 4" << std::endl;
     if (!stored) {
         sender->send(R"({"status":"error","message":"Failed to save message"})");
         return false;

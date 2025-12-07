@@ -15,9 +15,9 @@
 void startServer(unsigned short port, std::thread& serverThread) {
     serverThread = std::thread([port]() {
         try {
-            asio::io_context io_context;
-            TcpServer server(io_context, port);
-            io_context.run();
+            asio::io_context io;
+            TcpServer server(io, port);
+            io.run();
         } catch (std::exception& e) {
             std::cerr << "[Test] Server exception: " << e.what() << std::endl;
         }
@@ -34,26 +34,26 @@ std::string makeUser() {
     return "test_user_" + std::to_string(ms);
 }
 
+// create 2 users
 void testCreateAccountRequest() {
     Logger::log("\n[Test] Running testCreateAccountRequest...");
 
     ClientTestContext ctx;
 
-    auto connection = TcpConnection::create(ctx.io(), nullptr);
+    auto conn = TcpConnection::create(ctx.io(), nullptr);
+    assert(conn->connect("127.0.0.1", 5555));
 
-    if (!connection->connect("127.0.0.1", 5555)) {
-        std::cerr << "[Test] Client failed to connect.\n";
-        return;
-    }
+    Client client(conn);
+    conn->beginRead();
 
-    Client client(connection);
-    connection->beginRead();
+    std::string u1 = makeUser();
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::string u2 = makeUser();
 
-    bool result = client.createAccount("test_user", "secure_password");
-    assert(result && "[testCreateAccountRequest] Failed to send request.");
+    assert(client.createAccount(u1, "pw") && "Failed to create first account");
+    assert(client.createAccount(u2, "pw") && "Failed to create second account");
 
-    Logger::log("[Test] CreateAccountRequest passed.\n");
-
+    Logger::log("[Test] CreateAccountRequest passed\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -65,21 +65,17 @@ void testLoginRequest() {
     Logger::log("\n[Test] Running testLoginRequest...");
 
     ClientTestContext ctx;
+    auto conn = TcpConnection::create(ctx.io(), nullptr);
+    assert(conn->connect("127.0.0.1", 5555));
 
-    auto connection = TcpConnection::create(ctx.io(), nullptr);
+    Client client(conn);
+    conn->beginRead();
 
-    if (!connection->connect("127.0.0.1", 5555)) {
-        std::cerr << "[Test] Client failed to connect.\n";
-        return;
-    }
+    std::string user = makeUser();
+    assert(client.createAccount(user, "pw"));
+    assert(client.login(user, "pw"));
 
-    Client client(connection);
-    connection->beginRead();
-
-    bool result = client.login("test_user", "secure_password");
-    assert(result && "[testLoginRequest] Client failed to send login request.");
-
-    Logger::log("[Test] LoginRequest passed.");
+    Logger::log("[Test] LoginRequest passed\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -92,46 +88,68 @@ void testSendMessageRequest() {
 
     ClientTestContext ctx;
 
-    auto connection = TcpConnection::create(ctx.io(), nullptr);
+    // sender
+    auto connA = TcpConnection::create(ctx.io(), nullptr);
+    assert(connA->connect("127.0.0.1", 5555));
+    Client sender(connA);
+    connA->beginRead();
 
-    if (!connection->connect("127.0.0.1", 5555)) {
-        std::cerr << "[Test] Client failed to connect.\n";
-        return;
-    }
+    // receiver
+    auto connB = TcpConnection::create(ctx.io(), nullptr);
+    assert(connB->connect("127.0.0.1", 5555));
+    Client receiver(connB);
+    connB->beginRead();
 
-    Client client(connection);
-    connection->beginRead();
+    std::string userA = makeUser();
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::string userB = makeUser();
 
-    assert(client.login("test_user", "secure_password")
-           && "[testSendMessageRequest] Login failed");
+    assert(sender.createAccount(userA, "pw"));
+    assert(receiver.createAccount(userB, "pw"));
+    assert(sender.login(userA, "pw"));
 
-    assert(client.sendMessage("bob", "Hello Bob!")
-           && "[testSendMessageRequest] Failed to send message");
+    assert(sender.sendMessage(userB, "Hello!") &&
+           "Failed to send message to valid user");
 
-    Logger::log("[Test] SendMessageRequest passed.");
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    Logger::log("[Test] SendMessageRequest passed\n");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 // ===================================================
 // RECEIVE MESSAGE TEST
 // ===================================================
 
+// expects output like {"status":"success","message":"new_message","from":"bob","body":"hi"}
+// todo add get received messages func for client
 void testReceiveMessageResponse() {
     Logger::log("\n[Test] Running testReceiveMessageResponse...");
 
     ClientTestContext ctx;
 
-    auto connection = TcpConnection::create(ctx.io(), nullptr);
+    auto connA = TcpConnection::create(ctx.io(), nullptr);
+    auto connB = TcpConnection::create(ctx.io(), nullptr);
+    assert(connA->connect("127.0.0.1", 5555));
+    assert(connB->connect("127.0.0.1", 5555));
 
-    if (!connection->connect("127.0.0.1", 5555)) {
-        std::cerr << "[Test] Client failed to connect.\n";
-        return;
-    }
+    Client sender(connA);
+    Client receiver(connB);
+    connA->beginRead();
+    connB->beginRead();
 
-    Client client(connection);
-    connection->beginRead();
+    std::string userA = makeUser();
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::string userB = makeUser();
 
-    Logger::log("[Test] ReceiveMessageResponse placeholder passed.");
+    assert(sender.createAccount(userA, "pw"));
+    assert(receiver.createAccount(userB, "pw"));
+    assert(sender.login(userA, "pw"));
+
+    sender.sendMessage(userB, "hello");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // assert(!placeWhereMessagesAreStored.empty() && "Receiver never got message");
+    Logger::log("[Test] ReceiveMessageResponse passed\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -144,16 +162,19 @@ void testHandleDisconnectedClient() {
 
     ClientTestContext ctx;
 
-    auto connection = TcpConnection::create(ctx.io(), nullptr);
+    auto conn = TcpConnection::create(ctx.io(), nullptr);
+    assert(conn->connect("127.0.0.1", 5555));
 
-    if (!connection->connect("127.0.0.1", 5555)) {
-        std::cerr << "[Test] Client failed to connect.\n";
-        return;
-    }
+    Client client(conn);
+    conn->beginRead();
 
-    connection->socket().close(); // simulate disconnect
+    conn->socket().close();
 
-    Logger::log("[Test] HandleDisconnectedClient placeholder passed.");
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
+
+    assert(!conn->socket().is_open() && "Socket should be closed");
+
+    Logger::log("[Test] HandleDisconnectedClient passed\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -167,13 +188,12 @@ void testMultipleClientsSimultaneousConnections() {
     ClientTestContext ctx;
 
     for (int i = 0; i < 3; i++) {
-        auto connection = TcpConnection::create(ctx.io(), nullptr);
-        bool ok = connection->connect("127.0.0.1", 5555);
-        assert(ok && "[testMultipleClients] Client failed to connect.");
-        connection->beginRead();
+        auto conn = TcpConnection::create(ctx.io(), nullptr);
+        assert(conn->connect("127.0.0.1", 5555));
+        conn->beginRead();
     }
 
-    Logger::log("[Test] MultipleClientsSimultaneousConnections passed.");
+    Logger::log("[Test] MultipleClientsSimultaneousConnections passed\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -194,17 +214,11 @@ int main() {
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     testCreateAccountRequest();
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testLoginRequest();
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testSendMessageRequest();
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testReceiveMessageResponse();
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testHandleDisconnectedClient();
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
     testMultipleClientsSimultaneousConnections();
-    std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     Logger::log("\nAll tests executed.\n");
 
