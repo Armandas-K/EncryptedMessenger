@@ -2,6 +2,7 @@
 #include <iostream>
 #include <direct.h>
 #include "utils/Logger.h"
+#include "utils/base64.h"
 
 FileStorage::FileStorage() {
     loadUser();
@@ -156,7 +157,7 @@ bool FileStorage::appendConversationMessage(
     long timestamp
 ) {
     std::lock_guard<std::mutex> lock(file_mutex_);
-    std::cout << "appendConvMsg called" << "\n";
+
     // build folder: messages/userA_userB
     // folder name always alphabetical
     std::string folderName =
@@ -198,14 +199,14 @@ bool FileStorage::appendConversationMessage(
 
     // -------- Append new message --------
     nlohmann::json entry;
-    entry["from"]            = from;
-    entry["to"]              = to;
-    entry["timestamp"]       = timestamp;
-    entry["ciphertext"]      = ciphertext.ciphertext;
-    entry["iv"]              = ciphertext.iv;
-    entry["tag"]             = ciphertext.tag;   // if GCM
-    entry["aes_for_sender"]  = aesForSender;
-    entry["aes_for_recipient"] = aesForRecipient;
+    entry["from"]              = from;
+    entry["to"]                = to;
+    entry["timestamp"]         = timestamp;
+    entry["ciphertext"]        = base64::encode(ciphertext.ciphertext);
+    entry["iv"]                = base64::encode(ciphertext.iv);
+    entry["tag"]               = base64::encode(ciphertext.tag);
+    entry["aes_for_sender"]    = base64::encode(aesForSender);
+    entry["aes_for_recipient"] = base64::encode(aesForRecipient);
 
     convoJson["messages"].push_back(entry);
 
