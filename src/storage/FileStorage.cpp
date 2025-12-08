@@ -220,3 +220,38 @@ bool FileStorage::appendConversationMessage(
     out << convoJson.dump(4);
     return true;
 }
+
+nlohmann::json FileStorage::loadConversation(
+    const std::string& userA,
+    const std::string& userB
+) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+
+    std::string folderName = (userA < userB)
+        ? (userA + "_" + userB)
+        : (userB + "_" + userA);
+
+    std::string fullDir = std::string(MESSAGE_PATH) + "/" + folderName;
+    std::string convoFile = fullDir + "/conversation.json";
+
+    nlohmann::json convoJson;
+
+    std::ifstream in(convoFile);
+    if (!in.is_open()) {
+        // empty = no conversation
+        return nlohmann::json();
+    }
+
+    try {
+        in >> convoJson;
+    } catch (...) {
+        std::cerr << "[FileStorage] Invalid JSON in " << convoFile << ", resetting\n";
+        return nlohmann::json();
+    }
+
+    if (!convoJson.contains("messages")) {
+        return nlohmann::json::object({{"messages", nlohmann::json::array()}});
+    }
+
+    return convoJson;
+}

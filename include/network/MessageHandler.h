@@ -19,13 +19,13 @@ public:
         const std::string& message
     );
 
+    //
+    bool fetchMessages(TcpConnection::pointer requester, const std::string &withUser);
+
 private:
     TcpServer* server_;       // not owned
     FileStorage& storage_;    // reference to storage system
     CryptoManager crypto_;    // encryption
-
-    // helper function
-    std::string getUsernameFromConnection(TcpConnection::pointer conn);
 };
 
 #endif //ENCRYPTEDMESSENGER_MESSAGEHANDLER_H

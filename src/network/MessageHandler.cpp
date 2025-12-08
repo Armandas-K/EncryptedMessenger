@@ -5,10 +5,6 @@
 MessageHandler::MessageHandler(TcpServer* server, FileStorage& storage)
     : server_(server), storage_(storage), crypto_() {}
 
-std::string MessageHandler::getUsernameFromConnection(TcpConnection::pointer conn) {
-    return conn->getUsername();
-}
-
 bool MessageHandler::processMessage(
     TcpConnection::pointer sender,
     const std::string& to,
@@ -70,12 +66,49 @@ bool MessageHandler::processMessage(
         aes_for_recipient,
         timestamp
     );
-    std::cout << "lsakdjfhaksljdfhlksadjhflksajdhflkasjdfhlkasdjfh 4" << std::endl;
     if (!stored) {
         sender->send(R"({"status":"error","message":"Failed to save message"})");
         return false;
     }
 
     sender->send(R"({"status":"success","message":"Message stored"})");
+    return true;
+}
+
+bool MessageHandler::fetchMessages(
+    const TcpConnection::pointer requester,
+    const std::string& withUser
+) {
+    std::string requesterName = requester->getUsername();
+
+    if (requesterName.empty()) {
+        requester->send(R"({"status":"error","message":"Not logged in"})");
+        return false;
+    }
+
+    if (withUser.empty()) {
+        requester->send(R"({"status":"error","message":"Missing 'with' field"})");
+        return false;
+    }
+
+    if (!storage_.userExists(withUser)) {
+        requester->send(R"({"status":"error","message":"User does not exist"})");
+        return false;
+    }
+
+    // load conversation JSON
+    nlohmann::json convo = storage_.loadConversation(requesterName, withUser);
+
+    if (convo.is_null()) {
+        requester->send(R"({"status":"success","message":"[]"})");
+        return true;
+    }
+
+    // build response
+    nlohmann::json response;
+    response["status"] = "success";
+    response["messages"] = convo["messages"];
+
+    requester->send(response.dump());
     return true;
 }

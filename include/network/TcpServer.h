@@ -32,6 +32,7 @@ private:
     void handleCreateAccount(TcpConnection::pointer connection, const nlohmann::json &data);
     void handleLogin(TcpConnection::pointer connection, const nlohmann::json &data);
     void handleSendMessage(TcpConnection::pointer connection, const nlohmann::json &data);
+    void handleGetMessages(TcpConnection::pointer connection, const nlohmann::json &data);
 
     asio::io_context& io_context_;                           // reference to shared io_context
     asio::ip::tcp::acceptor acceptor_;                       // accepts incoming connections

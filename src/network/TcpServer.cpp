@@ -48,6 +48,8 @@ void TcpServer::handleAction(TcpConnection::pointer connection, const nlohmann::
         handleLogin(connection, message);
     } else if (action == "send_message") {
         handleSendMessage(connection, message);
+    } else if (action == "get_messages") {
+        handleGetMessages(connection, message);
     } else {
         std::cerr << "[TcpServer] Unknown action: " << action << std::endl;
     }
@@ -112,6 +114,21 @@ void TcpServer::handleSendMessage(TcpConnection::pointer connection, const nlohm
     }
 
     messageHandler_.processMessage(connection, to, message);
+}
+
+void TcpServer::handleGetMessages(
+    TcpConnection::pointer connection,
+    const nlohmann::json& data
+) {
+    std::string withUser = data.value("with", "");
+
+    if (withUser.empty()) {
+        connection->send(R"({"status":"error","message":"Missing username"})");
+        return;
+    }
+
+    // query storage
+    messageHandler_.fetchMessages(connection, withUser);
 }
 
 void TcpServer::removeConnection(TcpConnection::pointer connection) {

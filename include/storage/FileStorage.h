@@ -36,7 +36,10 @@ public:
     const std::string& aesForSender,
     const std::string& aesForRecipient,
     long timestamp
-);
+    );
+
+    // get message json shared between 2 users
+    nlohmann::json loadConversation(const std::string &userA, const std::string &userB);
 
 private:
     // load users.json data into memory
