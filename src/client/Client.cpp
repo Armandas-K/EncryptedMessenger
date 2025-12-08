@@ -29,7 +29,7 @@ std::string Client::hashPassword(const std::string& password) {
 
 bool Client::createAccount(const std::string &username, const std::string &password) {
     if (!connection_ || !connection_->socket().is_open()) {
-        std::cerr << "[Client] Cannot create account: no active connection.\n";
+        std::cerr << "[Client] Cannot create account: no active connection\n";
         return false;
     }
 
@@ -48,7 +48,7 @@ bool Client::createAccount(const std::string &username, const std::string &passw
 
 bool Client::login(const std::string& username, const std::string& password) {
     if (!connection_ || !connection_->socket().is_open()) {
-        std::cerr << "[Client] Cannot login: no active connection.\n";
+        std::cerr << "[Client] Cannot login: no active connection\n";
         return false;
     }
 
@@ -68,7 +68,7 @@ bool Client::login(const std::string& username, const std::string& password) {
 
 bool Client::sendMessage(const std::string& to, const std::string& message) {
     if (!connection_ || !connection_->socket().is_open()) {
-        std::cerr << "[Client] Cannot send message: no active connection.\n";
+        std::cerr << "[Client] Cannot send message: no active connection\n";
         return false;
     }
 
@@ -86,7 +86,7 @@ bool Client::sendMessage(const std::string& to, const std::string& message) {
 
 bool Client::getMessages(const std::string& withUser) {
     if (!connection_ || !connection_->socket().is_open()) {
-        std::cerr << "[Client] Cannot get messages: no active connection.\n";
+        std::cerr << "[Client] Cannot get messages: no active connection\n";
         return false;
     }
 
@@ -120,7 +120,18 @@ void Client::handleResponse(const std::string& status, const std::string& messag
     }
     // SEND MESSAGE
     if (pendingAction_ == "send_message" && status == "success") {
-        Logger::log("[Client] Message delivered");
+        try {
+            nlohmann::json obj = nlohmann::json::parse(message);
+
+            if (obj.contains("messages")) {
+                lastMessages_.clear();
+                for (auto& msg : obj["messages"])
+                    lastMessages_.push_back(msg);
+            }
+        }
+        catch (...) {
+            std::cerr << "[Client] Failed parsing message list\n";
+        }
         pendingAction_.clear();
         return;
     }

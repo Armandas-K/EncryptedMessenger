@@ -30,6 +30,9 @@ public:
     // receive messages from conversation with this user and withUser
     bool getMessages(const std::string &withUser);
 
+    // for receiving messages
+    std::vector<nlohmann::json> lastMessages_;
+
 private:
     // used to check if tcpConnection function calls fail or pass
     void handleResponse(const std::string& status, const std::string& message);

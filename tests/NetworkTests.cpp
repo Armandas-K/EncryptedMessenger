@@ -119,8 +119,6 @@ void testSendMessageRequest() {
 // RECEIVE MESSAGE TEST
 // ===================================================
 
-// expects output like {"status":"success","message":"new_message","from":"bob","body":"hi"}
-// todo add get received messages func for client
 void testReceiveMessageResponse() {
     Logger::log("\n[Test] Running testReceiveMessageResponse...");
 
@@ -140,17 +138,28 @@ void testReceiveMessageResponse() {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     std::string userB = makeUser();
 
-    assert(sender.createAccount(userA, "pw"));
-    assert(receiver.createAccount(userB, "pw"));
-    assert(sender.login(userA, "pw"));
+    assert(sender.createAccount(userA, "pw") && "Failed createAccount(A)");
+    assert(receiver.createAccount(userB, "pw") && "Failed createAccount(B)");
+    assert(sender.login(userA, "pw") && "Login failed for sender");
 
-    sender.sendMessage(userB, "hello");
+    // send
+    assert(sender.sendMessage(userB, "hello") && "Failed to send message");
 
+    // fetch
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    assert(receiver.getMessages(userA) && "Receiver failed getMessages()");
 
-    // assert(!placeWhereMessagesAreStored.empty() && "Receiver never got message");
+    // verify at least one message exists
+    assert(!receiver.lastMessages_.empty() && "Receiver got no messages!");
+
+    // verify last message has expected fields
+    nlohmann::json msg = receiver.lastMessages_.back();
+    assert(msg.contains("from"));
+    assert(msg.contains("to"));
+    assert(msg.contains("ciphertext"));
+    assert(msg.contains("timestamp"));
+
     Logger::log("[Test] ReceiveMessageResponse passed\n");
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 // ===================================================
