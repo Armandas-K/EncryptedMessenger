@@ -27,6 +27,9 @@ public:
     // message routing and delivery confirmation will be handled by the server
     bool sendMessage(const std::string &recipient, const std::string &message);
 
+    // receive messages from conversation with this user and withUser
+    bool getMessages(const std::string &withUser);
+
 private:
     // used to check if tcpConnection function calls fail or pass
     void handleResponse(const std::string& status, const std::string& message);

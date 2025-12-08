@@ -84,27 +84,53 @@ bool Client::sendMessage(const std::string& to, const std::string& message) {
     return waitForResponse();
 }
 
+bool Client::getMessages(const std::string& withUser) {
+    if (!connection_ || !connection_->socket().is_open()) {
+        std::cerr << "[Client] Cannot get messages: no active connection.\n";
+        return false;
+    }
+
+    pendingAction_ = "get_messages";
+
+    json msg = {
+        {"action", "get_messages"},
+        {"with", withUser}
+    };
+
+    connection_->send(msg.dump());
+    return waitForResponse();
+}
+
 void Client::handleResponse(const std::string& status, const std::string& message) {
     lastStatus_ = status;
     lastMessage_ = message;
 
-    // action-specific handling
-    // clear pending action
+    // LOGIN
     if (pendingAction_ == "login" && status == "success") {
         username_ = lastLoginUsername_;
         Logger::log("[Client] Logged in as: " + username_);
         pendingAction_.clear();
         return;
     }
-
+    // CREATE ACCOUNT
     if (pendingAction_ == "create_account" && status == "success") {
-        Logger::log("[Client] Account created successfully.");
+        Logger::log("[Client] Account created successfully");
         pendingAction_.clear();
         return;
     }
-
+    // SEND MESSAGE
     if (pendingAction_ == "send_message" && status == "success") {
-        Logger::log("[Client] Message delivered.");
+        Logger::log("[Client] Message delivered");
+        pendingAction_.clear();
+        return;
+    }
+    // GET MESSAGES
+    if (pendingAction_ == "get_messages") {
+        if (status == "success") {
+            Logger::log("[Client] Messages retrieved:\n" + message);
+        } else {
+            std::cerr << "[Client] Failed to retrieve messages: " << message << "\n";
+        }
         pendingAction_.clear();
         return;
     }
