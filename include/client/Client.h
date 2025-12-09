@@ -37,7 +37,7 @@ private:
     // used to check if tcpConnection function calls fail or pass
     void handleResponse(const std::string& status, const std::string& message);
 
-    // helper for checking success/error
+    // helper for checking success/error response from server
     bool waitForResponse();
 
     // hash a plain-text password using SHA-256 before sending to the server
@@ -51,9 +51,13 @@ private:
     std::string pendingAction_;
     std::string lastLoginUsername_;
 
-    // debug info for tests
+    // server response checking
     std::string lastStatus_;
-    std::string lastMessage_;
+    std::mutex responseMutex_;
+    std::condition_variable responseCv_;
+    bool responseReady_ = false;
+    // timeout for server responses
+    int timeoutMs_ = 500;
 };
 
 #endif //ENCRYPTEDMESSENGER_CLIENT_H

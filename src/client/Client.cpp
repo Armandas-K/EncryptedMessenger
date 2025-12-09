@@ -102,64 +102,106 @@ bool Client::getMessages(const std::string& withUser) {
 }
 
 void Client::handleResponse(const std::string& status, const std::string& message) {
-    lastStatus_ = status;
-    lastMessage_ = message;
+    {
+        // lock before modifying state
+        std::lock_guard<std::mutex> lock(responseMutex_);
+        lastStatus_ = status;
 
-    // LOGIN
-    if (pendingAction_ == "login" && status == "success") {
-        username_ = lastLoginUsername_;
-        Logger::log("[Client] Logged in as: " + username_);
-        pendingAction_.clear();
-        return;
-    }
-    // CREATE ACCOUNT
-    if (pendingAction_ == "create_account" && status == "success") {
-        Logger::log("[Client] Account created successfully");
-        pendingAction_.clear();
-        return;
-    }
-    // SEND MESSAGE
-    if (pendingAction_ == "send_message" && status == "success") {
-        try {
-            nlohmann::json obj = nlohmann::json::parse(message);
-
-            if (obj.contains("messages")) {
-                lastMessages_.clear();
-                for (auto& msg : obj["messages"])
-                    lastMessages_.push_back(msg);
+        // LOGIN
+        if (pendingAction_ == "login") {
+            if (status == "success") {
+                username_ = lastLoginUsername_;
+                Logger::log("[Client] Logged in as: " + username_);
+            } else {
+                std::cerr << "[Client] Login failed: " << message << "\n";
             }
+
+            pendingAction_.clear();
+            responseReady_ = true;
+            responseCv_.notify_one();
+            return;
         }
-        catch (...) {
-            std::cerr << "[Client] Failed parsing message list\n";
+        // CREATE ACCOUNT
+        if (pendingAction_ == "create_account") {
+            if (status == "success") {
+                Logger::log("[Client] Account created successfully");
+            } else {
+                std::cerr << "[Client] Failed to create account: " << message << "\n";
+            }
+
+            pendingAction_.clear();
+            responseReady_ = true;
+            responseCv_.notify_one();
+            return;
         }
-        pendingAction_.clear();
-        return;
-    }
-    // GET MESSAGES
-    if (pendingAction_ == "get_messages") {
+        // SEND MESSAGE
+        if (pendingAction_ == "send_message") {
+            if (status == "success") {
+                Logger::log("[Client] Message delivered");
+            } else {
+                std::cerr << "[Client] Failed to send message: " << message << "\n";
+            }
+
+            pendingAction_.clear();
+            responseReady_ = true;
+            responseCv_.notify_one();
+            return;
+        }
+        // GET MESSAGES
+        if (pendingAction_ == "get_messages") {
+            if (status == "success") {
+                // parse json list of messages
+                try {
+                    auto jsonObj = nlohmann::json::parse(message);
+
+                    lastMessages_.clear();
+                    if (jsonObj.contains("messages")) {
+                        for (auto& m : jsonObj["messages"])
+                            lastMessages_.push_back(m);
+                    }
+
+                    Logger::log("[Client] Retrieved " + std::to_string(lastMessages_.size()) + " messages");
+                }
+                catch (...) {
+                    std::cerr << "[Client] Failed to parse message list JSON\n";
+                }
+            } else {
+                std::cerr << "[Client] Failed to retrieve messages: " << message << "\n";
+            }
+
+            pendingAction_.clear();
+            responseReady_ = true;
+            responseCv_.notify_one();
+            return;
+        }
+
+        // default / unknown action
         if (status == "success") {
-            Logger::log("[Client] Messages retrieved:\n" + message);
+            Logger::log("[Client] SUCCESS: " + message);
+        } else if (status == "error") {
+            std::cerr << "[Client] ERROR: " << message << "\n";
         } else {
-            std::cerr << "[Client] Failed to retrieve messages: " << message << "\n";
+            Logger::log("[Client] Response: " + message);
         }
+
+        // fallback
         pendingAction_.clear();
-        return;
+        responseReady_ = true;
     }
-
-    // general logging
-    if (status == "success") {
-        Logger::log("[Client] SUCCESS: " + message);
-    } else if (status == "error") {
-        std::cerr << "[Client] ERROR: " << message << "\n";
-    } else {
-        Logger::log("[Client] Response: " + message);
-    }
-
-    // just in case
-    pendingAction_.clear();
+    // notify outside lock
+    responseCv_.notify_one();
 }
 
 bool Client::waitForResponse() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::unique_lock<std::mutex> lock(responseMutex_);
+    responseReady_ = false;
+
+    // wait until responseReady_ becomes true or timeout
+    if (!responseCv_.wait_for(lock, std::chrono::milliseconds(timeoutMs_),
+                              [this] { return responseReady_; })) {
+        std::cerr << "[Client] Response timed out.\n";
+        return false;
+    }
+
     return lastStatus_ == "success";
 }
