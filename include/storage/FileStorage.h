@@ -13,11 +13,14 @@ class FileStorage {
 public:
     FileStorage();
 
+    // wrapper for createUser atomic operation
+    bool createUser(const std::string &username, const std::string &password_hash);
+
     // add new user, returns true if created successfully, false if username exists
-    bool createUser(const std::string& username, const std::string& password_hash);
+    bool createUser_NoLock(const std::string& username, const std::string& password_hash);
 
     // make keys for encryption on account creation
-    bool createUserKeyFiles(const std::string& username);
+    bool createUserKeyFiles_NoLock(const std::string& username);
 
     // verify username and hashed password against users.json data
     bool loginUser(const std::string& username, const std::string& password_hash);
@@ -26,6 +29,7 @@ public:
     std::string getUserPublicKey(const std::string& username);
 
     // check if username is taken
+    bool userExists_NoLock(const std::string &username);
     bool userExists(const std::string & username);
 
     // append to message json shared between 2 users
@@ -38,6 +42,9 @@ public:
     long timestamp
     );
 
+    // allow tcpServer to access mutex
+    std::mutex& mutex() { return file_mutex_; }
+
     // get message json shared between 2 users
     nlohmann::json loadConversation(const std::string &userA, const std::string &userB);
 
@@ -46,6 +53,7 @@ private:
     bool loadUser();
 
     // write users.json data to storage
+    bool saveUser_NoLock();
     bool saveUser();
 
 private:

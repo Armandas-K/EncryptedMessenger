@@ -42,7 +42,7 @@ bool FileStorage::loadUser() {
     return true;
 }
 
-bool FileStorage::saveUser() {
+bool FileStorage::saveUser_NoLock() {
     std::ofstream file(userFilePath_);
     if (!file.is_open()) return false;
 
@@ -50,8 +50,18 @@ bool FileStorage::saveUser() {
     return true;
 }
 
-bool FileStorage::createUser(const std::string& username, const std::string& password_hash) {
+bool FileStorage::saveUser() {
     std::lock_guard<std::mutex> lock(file_mutex_);
+    return saveUser_NoLock();
+}
+
+bool FileStorage::createUser(const std::string& username,
+                             const std::string& password_hash) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    return createUser_NoLock(username, password_hash);
+}
+
+bool FileStorage::createUser_NoLock(const std::string& username, const std::string& password_hash) {
     for (const auto& user : data_["users"]) {
         if (user["username"] == username) {
             std::cerr << "[FileStorage] Username already exists.\n";
@@ -64,13 +74,11 @@ bool FileStorage::createUser(const std::string& username, const std::string& pas
         {"password_hash", password_hash}
     };
     data_["users"].push_back(new_user);
-    return saveUser();
+    return saveUser_NoLock();
 }
 
-bool FileStorage::createUserKeyFiles(
-    const std::string& username)
-{
-    std::lock_guard<std::mutex> lock(file_mutex_);
+bool FileStorage::createUserKeyFiles_NoLock(
+    const std::string& username) {
 
     // build "keys/username"
     std::string userKeyDir = std::string(KEY_PATH) + "/" + username;
@@ -138,8 +146,7 @@ std::string FileStorage::getUserPublicKey(const std::string& username) {
     return pem;
 }
 
-bool FileStorage::userExists(const std::string &username) {
-    std::lock_guard<std::mutex> lock(file_mutex_);
+bool FileStorage::userExists_NoLock(const std::string &username) {
     for (const auto& user : data_["users"]) {
         if (user["username"] == username) {
             return true;
@@ -148,14 +155,18 @@ bool FileStorage::userExists(const std::string &username) {
     return false;
 }
 
+bool FileStorage::userExists(const std::string &username) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    return userExists_NoLock(username);
+}
+
 bool FileStorage::appendConversationMessage(
     const std::string& from,
     const std::string& to,
     const CryptoManager::AESEncrypted& ciphertext,
     const std::string& aesForSender,
     const std::string& aesForRecipient,
-    long timestamp
-) {
+    long timestamp) {
     std::lock_guard<std::mutex> lock(file_mutex_);
 
     // build folder: messages/userA_userB
@@ -223,8 +234,7 @@ bool FileStorage::appendConversationMessage(
 
 nlohmann::json FileStorage::loadConversation(
     const std::string& userA,
-    const std::string& userB
-) {
+    const std::string& userB) {
     std::lock_guard<std::mutex> lock(file_mutex_);
 
     std::string folderName = (userA < userB)

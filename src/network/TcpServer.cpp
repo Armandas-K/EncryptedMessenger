@@ -55,7 +55,9 @@ void TcpServer::handleAction(TcpConnection::pointer connection, const nlohmann::
     }
 }
 
-void TcpServer::handleCreateAccount(TcpConnection::pointer connection, const nlohmann::json& data) {
+void TcpServer::handleCreateAccount(
+        TcpConnection::pointer connection,
+        const nlohmann::json& data) {
     std::string username = data.value("username", "");
     std::string password_hash = data.value("password_hash", "");
 
@@ -64,19 +66,24 @@ void TcpServer::handleCreateAccount(TcpConnection::pointer connection, const nlo
         return;
     }
 
-    if (storage_.userExists(username)) {
+    // atomic operation start
+    std::lock_guard<std::mutex> guard(storage_.mutex());
+
+    if (storage_.userExists_NoLock(username)) {
         connection->send(R"({"status":"error","message":"User already exists"})");
         return;
     }
 
-    // Create user entry in users.json
-    if (!storage_.createUser(username, password_hash)) {
+    // write user to json
+    if (!storage_.createUser_NoLock(username, password_hash)) {
         connection->send(R"({"status":"error","message":"Failed to create user"})");
         return;
     }
 
-    // Create RSA keypair + write to keys/username/
-    if (!storage_.createUserKeyFiles(username)) {
+    // generate RSA key files
+    if (!storage_.createUserKeyFiles_NoLock(username)) {
+        // todo: roll back the user entry
+        // deleteUser(), saveUser()
         connection->send(R"({"status":"error","message":"Failed to create user key files"})");
         return;
     }

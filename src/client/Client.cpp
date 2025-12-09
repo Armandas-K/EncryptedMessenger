@@ -160,6 +160,6 @@ void Client::handleResponse(const std::string& status, const std::string& messag
 }
 
 bool Client::waitForResponse() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(60));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     return lastStatus_ == "success";
 }

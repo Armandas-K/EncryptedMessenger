@@ -19,7 +19,7 @@ public:
         const std::string& message
     );
 
-    //
+    // called by tcpServer for receive message action
     bool fetchMessages(TcpConnection::pointer requester, const std::string &withUser);
 
 private:
