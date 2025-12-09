@@ -42,19 +42,6 @@ bool FileStorage::loadUser() {
     return true;
 }
 
-bool FileStorage::saveUser_NoLock() {
-    std::ofstream file(userFilePath_);
-    if (!file.is_open()) return false;
-
-    file << data_.dump(4);
-    return true;
-}
-
-bool FileStorage::saveUser() {
-    std::lock_guard<std::mutex> lock(file_mutex_);
-    return saveUser_NoLock();
-}
-
 bool FileStorage::createUser(const std::string& username,
                              const std::string& password_hash) {
     std::lock_guard<std::mutex> lock(file_mutex_);
@@ -230,6 +217,30 @@ bool FileStorage::appendConversationMessage(
 
     out << convoJson.dump(4);
     return true;
+}
+
+bool FileStorage::saveUser_NoLock() {
+    std::ofstream file(userFilePath_);
+    if (!file.is_open()) return false;
+
+    file << data_.dump(4);
+    return true;
+}
+
+bool FileStorage::saveUser() {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+    return saveUser_NoLock();
+}
+
+bool FileStorage::deleteUser_NoLock(const std::string& username) {
+    auto& users = data_["users"];
+    for (auto it = users.begin(); it != users.end(); ++it) {
+        if ((*it)["username"] == username) {
+            users.erase(it);
+            return true;
+        }
+    }
+    return false;
 }
 
 nlohmann::json FileStorage::loadConversation(

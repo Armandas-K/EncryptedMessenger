@@ -42,19 +42,22 @@ public:
     long timestamp
     );
 
-    // allow tcpServer to access mutex
-    std::mutex& mutex() { return file_mutex_; }
+    // write users.json data to storage
+    bool saveUser_NoLock();
+    bool saveUser();
+
+    // danger
+    bool deleteUser_NoLock(const std::string &username);
 
     // get message json shared between 2 users
     nlohmann::json loadConversation(const std::string &userA, const std::string &userB);
 
+    // allow tcpServer to access mutex
+    std::mutex& mutex() { return file_mutex_; }
+
 private:
     // load users.json data into memory
     bool loadUser();
-
-    // write users.json data to storage
-    bool saveUser_NoLock();
-    bool saveUser();
 
 private:
     // hardcoded path to user account file

@@ -82,8 +82,9 @@ void TcpServer::handleCreateAccount(
 
     // generate RSA key files
     if (!storage_.createUserKeyFiles_NoLock(username)) {
-        // todo: roll back the user entry
-        // deleteUser(), saveUser()
+        // rollback user entry
+        storage_.deleteUser_NoLock(username);
+        storage_.saveUser_NoLock();
         connection->send(R"({"status":"error","message":"Failed to create user key files"})");
         return;
     }
