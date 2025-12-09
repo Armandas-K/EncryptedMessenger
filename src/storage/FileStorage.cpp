@@ -232,15 +232,79 @@ bool FileStorage::saveUser() {
     return saveUser_NoLock();
 }
 
-bool FileStorage::deleteUser_NoLock(const std::string& username) {
+bool FileStorage::deleteUserJson_NoLock(const std::string& username) {
     auto& users = data_["users"];
+
     for (auto it = users.begin(); it != users.end(); ++it) {
         if ((*it)["username"] == username) {
             users.erase(it);
             return true;
         }
     }
-    return false;
+
+    // nothing to delete
+    return true;
+}
+
+bool FileStorage::deleteUserKeys_NoLock(const std::string& username) {
+    std::error_code ec;
+    std::string userKeyDir = std::string(KEY_PATH) + "/" + username;
+
+    if (!std::filesystem::exists(userKeyDir, ec)) {
+        // nothing to delete
+        return true;
+    }
+
+    if (!std::filesystem::remove_all(userKeyDir, ec) || ec) {
+        std::cerr << "[FileStorage] Failed to remove key dir '" << userKeyDir
+                  << "': " << ec.message() << "\n";
+        return false;
+    }
+    return true;
+}
+
+bool FileStorage::deleteUserConversations_NoLock(const std::string& username) {
+    std::filesystem::path messagesRoot = MESSAGE_PATH;
+    std::error_code ec;
+
+    if (!std::filesystem::exists(messagesRoot, ec)) {
+        // nothing to delete
+        return true;
+    }
+
+    for (auto &entry : std::filesystem::directory_iterator(messagesRoot, ec)) {
+        if (ec) break;
+        if (!entry.is_directory()) continue;
+
+        std::string name = entry.path().filename().string();
+        // check both sides of underscore
+        bool matches = name.find(username + "_") == 0 ||
+            name.rfind("_" + username) == name.size() - username.size() - 1;
+
+        if (matches) {
+            std::error_code ec2;
+            std::filesystem::remove_all(entry.path(), ec2);
+            if (ec2) {
+                std::cerr << "[FileStorage] Failed to delete conversation '"
+                          << name << "': " << ec2.message() << "\n";
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+bool FileStorage::deleteUser(const std::string& username) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+
+    // rollback safe delete everything
+    bool json = deleteUserJson_NoLock(username);
+    bool keys = deleteUserKeys_NoLock(username);
+    bool convo = deleteUserConversations_NoLock(username);
+
+    saveUser_NoLock();
+
+    return json && keys && convo;
 }
 
 nlohmann::json FileStorage::loadConversation(

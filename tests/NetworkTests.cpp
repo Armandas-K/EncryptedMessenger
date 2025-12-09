@@ -9,6 +9,20 @@
 #include "utils/Logger.h"
 
 // ===================================================
+// Delete Old User Data
+// ===================================================
+
+// could reset entire file system with ofstream but that would require
+// a directory for test user data separate from normal data
+void resetUsers() {
+    FileStorage storage = FileStorage();
+    for (int i = 0; i < 10; i++) {
+        storage.deleteUser("test_user_" + std::to_string(i));
+    }
+    storage.saveUser();
+}
+
+// ===================================================
 // Set Up TcpServer
 // ===================================================
 
@@ -28,10 +42,9 @@ void startServer(unsigned short port, std::thread& serverThread) {
 // ACCOUNT CREATION
 // ===================================================
 
+int userCount = 0;
 std::string makeUser() {
-    auto now = std::chrono::system_clock::now().time_since_epoch();
-    long long ms = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
-    return "test_user_" + std::to_string(ms);
+    return "test_user_" + std::to_string(++userCount);
 }
 
 // create 2 users
@@ -214,6 +227,8 @@ int main() {
     Logger::log("=============================\n");
     Logger::log(" Running Network Unit Tests\n");
     Logger::log("=============================\n");
+
+    resetUsers();
 
     unsigned short port = 5555;
     std::thread serverThread;

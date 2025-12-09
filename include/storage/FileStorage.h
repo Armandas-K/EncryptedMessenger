@@ -47,7 +47,10 @@ public:
     bool saveUser();
 
     // danger
-    bool deleteUser_NoLock(const std::string &username);
+    bool deleteUserJson_NoLock(const std::string& username);
+    bool deleteUserKeys_NoLock(const std::string& username);
+    bool deleteUserConversations_NoLock(const std::string& username);
+    bool deleteUser(const std::string &username);
 
     // get message json shared between 2 users
     nlohmann::json loadConversation(const std::string &userA, const std::string &userB);
