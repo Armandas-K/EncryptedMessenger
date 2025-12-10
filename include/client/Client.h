@@ -51,8 +51,9 @@ private:
     std::string pendingAction_;
     std::string lastLoginUsername_;
 
-    // server response checking
+    // server response checking/debug
     std::string lastStatus_;
+    std::string lastMessage_;
     std::mutex responseMutex_;
     std::condition_variable responseCv_;
     bool responseReady_ = false;

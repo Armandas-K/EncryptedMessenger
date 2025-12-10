@@ -106,6 +106,7 @@ void Client::handleResponse(const std::string& status, const std::string& messag
         // lock before modifying state
         std::lock_guard<std::mutex> lock(responseMutex_);
         lastStatus_ = status;
+        lastMessage_ = message;
 
         // LOGIN
         if (pendingAction_ == "login") {
@@ -194,14 +195,14 @@ void Client::handleResponse(const std::string& status, const std::string& messag
 
 bool Client::waitForResponse() {
     std::unique_lock<std::mutex> lock(responseMutex_);
-    responseReady_ = false;
 
     // wait until responseReady_ becomes true or timeout
     if (!responseCv_.wait_for(lock, std::chrono::milliseconds(timeoutMs_),
                               [this] { return responseReady_; })) {
-        std::cerr << "[Client] Response timed out.\n";
+        std::cerr << "[Client] Response timed out\n";
         return false;
     }
 
+    responseReady_ = false;
     return lastStatus_ == "success";
 }

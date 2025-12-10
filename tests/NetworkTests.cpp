@@ -60,7 +60,6 @@ void testCreateAccountRequest() {
     conn->beginRead();
 
     std::string u1 = makeUser();
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     std::string u2 = makeUser();
 
     assert(client.createAccount(u1, "pw") && "Failed to create first account");
@@ -114,7 +113,6 @@ void testSendMessageRequest() {
     connB->beginRead();
 
     std::string userA = makeUser();
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     std::string userB = makeUser();
 
     assert(sender.createAccount(userA, "pw"));
@@ -148,7 +146,6 @@ void testReceiveMessageResponse() {
     connB->beginRead();
 
     std::string userA = makeUser();
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     std::string userB = makeUser();
 
     assert(sender.createAccount(userA, "pw") && "Failed createAccount(A)");
@@ -173,6 +170,7 @@ void testReceiveMessageResponse() {
     assert(msg.contains("timestamp"));
 
     Logger::log("[Test] ReceiveMessageResponse passed\n");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
 // ===================================================
@@ -243,6 +241,7 @@ int main() {
     testReceiveMessageResponse();
     testHandleDisconnectedClient();
     testMultipleClientsSimultaneousConnections();
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
     Logger::log("\nAll tests executed.\n");
 
