@@ -157,6 +157,7 @@ void testReceiveMessageResponse() {
 
     // fetch
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    assert(receiver.login(userB, "pw") && "Login failed for receiver");
     assert(receiver.getMessages(userA) && "Receiver failed getMessages()");
 
     // verify at least one message exists
