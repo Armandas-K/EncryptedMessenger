@@ -5,7 +5,21 @@
 #include "utils/base64.h"
 
 FileStorage::FileStorage() {
+    initializeDirectories();
     loadUser();
+}
+
+void FileStorage::initializeDirectories() {
+    std::error_code ec;
+
+    // create root "data" directory
+    std::filesystem::create_directories(std::filesystem::path(USERS_PATH).parent_path(), ec);
+
+    // create data/keys directory
+    std::filesystem::create_directories(KEY_PATH, ec);
+
+    // create data/messages directory
+    std::filesystem::create_directories(MESSAGE_PATH, ec);
 }
 
 bool FileStorage::loadUser() {
@@ -13,19 +27,16 @@ bool FileStorage::loadUser() {
     std::ifstream file(userFilePath_);
 
     if (!file.is_open()) {
-        std::cerr << "[FileStorage] Could not open users file, creating new one.\n";
+        // first run: initialise user.json
         data_["users"] = nlohmann::json::array();
-        file.close();
-        saveUser();
+        saveUser_NoLock();
         return true;
     }
 
-    // handle empty file
+    // user.json exists but is empty
     if (file.peek() == std::ifstream::traits_type::eof()) {
-        std::cerr << "[FileStorage] Empty users file, reinitializing.\n";
         data_["users"] = nlohmann::json::array();
-        file.close();
-        saveUser();
+        saveUser_NoLock();
         return true;
     }
 
@@ -35,7 +46,7 @@ bool FileStorage::loadUser() {
         std::cerr << "[FileStorage] Invalid JSON format in users file.\n";
         file.close();
         data_["users"] = nlohmann::json::array();
-        saveUser();
+        saveUser_NoLock();
         return false;
     }
 

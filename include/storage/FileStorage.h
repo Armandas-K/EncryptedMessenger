@@ -59,6 +59,8 @@ public:
     std::mutex& mutex() { return file_mutex_; }
 
 private:
+    // if data, keys, and messages directories are missing
+    void initializeDirectories();
     // load users.json data into memory
     bool loadUser();
 
