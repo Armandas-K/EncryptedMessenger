@@ -9,10 +9,7 @@
 #include <vector>
 #include <iostream>
 
-CryptoManager::CryptoManager() {
-    OpenSSL_add_all_algorithms();
-    ERR_load_crypto_strings();
-}
+CryptoManager::CryptoManager() = default;
 
 // -------------RSA KEY GENERATION-------------
 
@@ -64,12 +61,18 @@ CryptoManager::RSAKeyPair CryptoManager::generateRSAKeyPair() {
 
 std::string CryptoManager::rsaEncrypt(const std::string& plaintext,
                                       const std::string& publicKeyPem) {
-    BIO* bio = BIO_new_mem_buf(publicKeyPem.data(), publicKeyPem.size());
+    BIO* bio = BIO_new_mem_buf(publicKeyPem.data(), static_cast<int>(publicKeyPem.size()));
     RSA* pubKey = PEM_read_bio_RSA_PUBKEY(bio, nullptr, nullptr, nullptr);
     BIO_free(bio);
 
-    if (!pubKey)
+    if (!pubKey) {
         throw std::runtime_error("Failed to load public key PEM");
+    }
+
+    if (plaintext.size() > RSA_size(pubKey) - 42) {
+        RSA_free(pubKey);
+        throw std::runtime_error("RSA plaintext too large");
+    }
 
     std::string output;
     output.resize(RSA_size(pubKey));
@@ -95,7 +98,7 @@ std::string CryptoManager::rsaEncrypt(const std::string& plaintext,
 
 std::string CryptoManager::rsaDecrypt(const std::string& ciphertext,
                                       const std::string& privateKeyPem) {
-    BIO* bio = BIO_new_mem_buf(privateKeyPem.data(), privateKeyPem.size());
+    BIO* bio = BIO_new_mem_buf(privateKeyPem.data(), static_cast<int>(privateKeyPem.size()));
     RSA* privKey = PEM_read_bio_RSAPrivateKey(bio, nullptr, nullptr, nullptr);
     BIO_free(bio);
 
@@ -126,7 +129,9 @@ std::string CryptoManager::rsaDecrypt(const std::string& ciphertext,
 
 std::vector<uint8_t> CryptoManager::generateAESKey(size_t keySize) {
     std::vector<uint8_t> key(keySize);
-    RAND_bytes(key.data(), keySize);
+    if (RAND_bytes(key.data(), keySize) != 1) {
+        throw std::runtime_error("RAND_bytes failed");
+    }
     return key;
 }
 
@@ -144,7 +149,8 @@ CryptoManager::AESEncrypted CryptoManager::aesEncrypt(
     result.iv.resize(12);
     RAND_bytes(result.iv.data(), result.iv.size());
 
-    EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr);
+    if (!EVP_EncryptInit_ex(ctx, EVP_aes_256_gcm(), nullptr, nullptr, nullptr))
+        throw std::runtime_error("AES init failed");
 
     EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_IVLEN, result.iv.size(), nullptr);
 
@@ -153,11 +159,13 @@ CryptoManager::AESEncrypted CryptoManager::aesEncrypt(
     result.ciphertext.resize(plaintext.size());
 
     int outLen;
-    EVP_EncryptUpdate(ctx,
-                      result.ciphertext.data(),
-                      &outLen,
-                      (const uint8_t*)plaintext.data(),
-                      plaintext.size());
+    if (!EVP_EncryptUpdate(ctx,
+                       result.ciphertext.data(),
+                       &outLen,
+                       reinterpret_cast<const uint8_t*>(plaintext.data()),
+                       plaintext.size())) {
+        throw std::runtime_error("AES encrypt update failed");
+    }
 
     int finalLen;
     EVP_EncryptFinal_ex(ctx, result.ciphertext.data() + outLen, &finalLen);
