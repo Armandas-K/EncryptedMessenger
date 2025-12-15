@@ -142,6 +142,54 @@ void CLI::handleSendMessageInput(int choice) {
     }
 }
 
+// todo client function for getting conversations
+
+void CLI::showConversationsPage() {
+    Logger::log("\n=== Conversations ===\n");
+
+    if (!client->getConversations()) {
+        Logger::log("Failed to load conversations.\n");
+        currentPage = Page::MAIN_MENU;
+        return;
+    }
+
+    const auto& convos = client->getCachedConversations();
+    for (size_t i = 0; i < convos.size(); ++i) {
+        Logger::log(std::to_string(i + 1) + ". " + convos[i] + "\n");
+    }
+
+    Logger::log(std::to_string(convos.size() + 1) + ". Back\n");
+
+    int choice = getUserChoice(1, convos.size() + 1);
+    if (choice == convos.size() + 1) {
+        currentPage = Page::SEND_MESSAGE;
+    } else {
+        client->selectConversation(convos[choice - 1]);
+        currentPage = Page::VIEW_MESSAGES;
+    }
+}
+
+void CLI::handleConversationsInput(int choice) {
+}
+
+void CLI::showMessagesPage() {
+    Logger::log("\n=== Messages ===\n");
+
+    const auto& msgs = client->getLastMessages();
+    for (const auto& msg : msgs) {
+        Logger::log(msg["from"].get<std::string>() + ": [encrypted]\n");
+    }
+
+    Logger::log("\n1. Send message\n");
+    Logger::log("2. Back\n");
+
+    int choice = getUserChoice(1, 2);
+    handleMessagesInput(choice);
+}
+
+void CLI::handleMessagesInput(int choice) {
+}
+
 // ----------- Input Handling Helper -------------
 int CLI::getUserChoice(int min, int max) {
     int choice;

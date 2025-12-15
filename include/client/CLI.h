@@ -37,6 +37,12 @@ private:
     void showSendMessagePage();
     void handleSendMessageInput(int choice);
 
+    void showConversationsPage();
+    void handleConversationsInput(int choice);
+
+    void showMessagesPage();
+    void handleMessagesInput(int choice);
+
     // Helper
     void displayCurrentPage();
     int getUserChoice(int min, int max);
