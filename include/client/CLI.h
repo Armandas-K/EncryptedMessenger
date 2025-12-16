@@ -17,14 +17,17 @@ enum class Page {
 
 class CLI {
 public:
-    explicit CLI(std::shared_ptr<Client> client);
+    CLI(asio::io_context& io,
+        const std::string& host,
+        unsigned short port);
 
     // run CLI loop
     void run();
 
 private:
-    std::shared_ptr<Client> client;
-    Page currentPage;
+    std::shared_ptr<TcpConnection> connection_;
+    std::shared_ptr<Client> client_;
+    Page currentPage_;
 
     // page logic
     void showMainMenu();

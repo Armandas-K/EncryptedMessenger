@@ -42,7 +42,6 @@ bool Client::createAccount(const std::string &username, const std::string &passw
     };
 
     connection_->send(msg.dump());
-    connection_->beginRead();
     return waitForResponse();
 }
 
@@ -62,7 +61,6 @@ bool Client::login(const std::string& username, const std::string& password) {
     };
 
     connection_->send(msg.dump());
-    connection_->beginRead();
     return waitForResponse();
 }
 
