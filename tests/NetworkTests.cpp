@@ -161,10 +161,10 @@ void testReceiveMessageResponse() {
     assert(receiver.getMessages(userA) && "Receiver failed getMessages()");
 
     // verify at least one message exists
-    assert(!receiver.lastMessages_.empty() && "Receiver got no messages!");
+    assert(!receiver.getCachedMessages().empty() && "Receiver got no messages!");
 
     // verify last message has expected fields
-    nlohmann::json msg = receiver.lastMessages_.back();
+    nlohmann::json msg = receiver.getCachedMessages().back();
     assert(msg.contains("from"));
     assert(msg.contains("to"));
     assert(msg.contains("ciphertext"));

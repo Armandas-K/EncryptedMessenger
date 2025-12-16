@@ -27,11 +27,19 @@ public:
     // message routing and delivery confirmation will be handled by the server
     bool sendMessage(const std::string &recipient, const std::string &message);
 
+    // get list of users conversations
+    bool getConversations();
+
     // receive messages from conversation with this user and withUser
     bool getMessages(const std::string &withUser);
 
-    // for receiving messages
-    std::vector<nlohmann::json> lastMessages_;
+    // getters for CLI (copies to avoid returning refs guarded by a mutex)
+    std::vector<std::string> getCachedConversations();
+    std::vector<nlohmann::json> getCachedMessages();
+
+    // helpers
+    bool isLoggedIn() const { return !username_.empty(); }
+    const std::string& getUsername() const { return username_; }
 
 private:
     // used to check if tcpConnection function calls fail or pass
@@ -50,6 +58,10 @@ private:
     // pending action system
     std::string pendingAction_;
     std::string lastLoginUsername_;
+
+    // cached data for CLI
+    std::vector<std::string> conversations_;
+    std::vector<nlohmann::json> lastMessages_;
 
     // server response checking/debug
     std::string lastStatus_;

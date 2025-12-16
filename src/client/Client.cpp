@@ -84,6 +84,27 @@ bool Client::sendMessage(const std::string& to, const std::string& message) {
     return waitForResponse();
 }
 
+bool Client::getConversations() {
+    if (!connection_ || !connection_->socket().is_open()) {
+        std::cerr << "[Client] Cannot get conversations: no active connection\n";
+        return false;
+    }
+
+    if (username_.empty()) {
+        std::cerr << "[Client] Cannot get conversations: not logged in\n";
+        return false;
+    }
+
+    pendingAction_ = "get_conversations";
+
+    json msg = {
+        {"action", "get_conversations"}
+    };
+
+    connection_->send(msg.dump());
+    return waitForResponse();
+}
+
 bool Client::getMessages(const std::string& withUser) {
     if (!connection_ || !connection_->socket().is_open()) {
         std::cerr << "[Client] Cannot get messages: no active connection\n";
@@ -99,6 +120,16 @@ bool Client::getMessages(const std::string& withUser) {
 
     connection_->send(msg.dump());
     return waitForResponse();
+}
+
+std::vector<std::string> Client::getCachedConversations() {
+    std::lock_guard<std::mutex> lock(responseMutex_);
+    return conversations_;
+}
+
+std::vector<nlohmann::json> Client::getCachedMessages() {
+    std::lock_guard<std::mutex> lock(responseMutex_);
+    return lastMessages_;
 }
 
 void Client::handleResponse(const std::string& status, const std::string& message) {
@@ -148,6 +179,33 @@ void Client::handleResponse(const std::string& status, const std::string& messag
             responseCv_.notify_one();
             return;
         }
+        // GET CONVERSATIONS
+        if (pendingAction_ == "get_conversations") {
+            if (status == "success") {
+                try {
+                    auto jsonObj = nlohmann::json::parse(message);
+
+                    conversations_.clear();
+                    if (jsonObj.contains("conversations") && jsonObj["conversations"].is_array()) {
+                        for (auto& c : jsonObj["conversations"]) {
+                            if (c.is_string())
+                                conversations_.push_back(c.get<std::string>());
+                        }
+                    }
+
+                    Logger::log("[Client] Retrieved " + std::to_string(conversations_.size()) + " conversations");
+                } catch (...) {
+                    std::cerr << "[Client] Failed to parse conversations JSON\n";
+                }
+            } else {
+                std::cerr << "[Client] Failed to retrieve conversations: " << message << "\n";
+            }
+
+            pendingAction_.clear();
+            responseReady_ = true;
+            responseCv_.notify_one();
+            return;
+        }
         // GET MESSAGES
         if (pendingAction_ == "get_messages") {
             if (status == "success") {
@@ -164,6 +222,7 @@ void Client::handleResponse(const std::string& status, const std::string& messag
                     Logger::log("[Client] Retrieved " + std::to_string(lastMessages_.size()) + " messages");
                 }
                 catch (...) {
+                    // todo still being called... fix maybe
                     std::cerr << "[Client] Failed to parse message list JSON\n";
                 }
             } else {

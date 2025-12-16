@@ -1,7 +1,6 @@
 #include "client/CLI.h"
 #include "utils/Logger.h"
 
-// Constructor, initialises members
 CLI::CLI(std::shared_ptr<Client> client)
     : client(std::move(client)), currentPage(Page::MAIN_MENU) {}
 
@@ -11,7 +10,7 @@ void CLI::run() {
     }
 }
 
-// Show the page based on the currentPage enum
+// show the page based on the currentPage enum
 void CLI::displayCurrentPage() {
     switch (currentPage) {
         case Page::MAIN_MENU:
@@ -26,13 +25,19 @@ void CLI::displayCurrentPage() {
         case Page::SEND_MESSAGE:
             showSendMessagePage();
             break;
+        case Page::CONVERSATIONS:
+            showConversationsPage();
+            break;
+        case Page::VIEW_MESSAGES:
+            showMessagesPage();
+            break;
         default:
             currentPage = Page::EXIT;
             break;
     }
 }
 
-// ----------- Main Menu Page -------------
+// Main Menu Page
 void CLI::showMainMenu() {
     Logger::log("\n=== Encrypted Messenger ===\n");
     Logger::log("1. Log in\n");
@@ -50,7 +55,7 @@ void CLI::handleMainMenuInput(int choice) {
     }
 }
 
-// ----------- Login Page -------------
+// Login Page
 void CLI::showLoginPage() {
     Logger::log("\n=== Login ===\n");
     Logger::log("1. Enter credentials\n");
@@ -67,10 +72,10 @@ void CLI::handleLoginInput(int choice) {
             std::cin >> username;
             Logger::log("Password: ");
             std::cin >> password;
-            // Call your client’s login function
+
             if (client->login(username, password)) {
                 Logger::log("Login successful!\n");
-                currentPage = Page::SEND_MESSAGE;
+                currentPage = Page::CONVERSATIONS;
             } else {
                 Logger::log("Login failed.\n");
                 currentPage = Page::MAIN_MENU;
@@ -83,7 +88,7 @@ void CLI::handleLoginInput(int choice) {
     }
 }
 
-// ----------- Create Account Page -------------
+// Create Account Page
 void CLI::showCreateAccountPage() {
     Logger::log("\n=== Create Account ===\n");
     Logger::log("1. Enter details\n");
@@ -114,7 +119,7 @@ void CLI::handleCreateAccountInput(int choice) {
     }
 }
 
-// ----------- Send Message Page -------------
+// Send Message Page
 void CLI::showSendMessagePage() {
     Logger::log("\n=== Send Message ===\n");
     Logger::log("1. Send a message\n");
@@ -142,10 +147,9 @@ void CLI::handleSendMessageInput(int choice) {
     }
 }
 
-// todo client function for getting conversations
-
 void CLI::showConversationsPage() {
     Logger::log("\n=== Conversations ===\n");
+    Logger::log("Fetching conversations...\n");
 
     if (!client->getConversations()) {
         Logger::log("Failed to load conversations.\n");
@@ -153,48 +157,102 @@ void CLI::showConversationsPage() {
         return;
     }
 
-    const auto& convos = client->getCachedConversations();
-    for (size_t i = 0; i < convos.size(); ++i) {
-        Logger::log(std::to_string(i + 1) + ". " + convos[i] + "\n");
+    auto conversations = client->getCachedConversations();
+
+    if (conversations.empty()) {
+        Logger::log("No conversations found.\n");
+        Logger::log("1. Back\n");
+        int choice = getUserChoice(1, 1);
+        (void)choice;
+        currentPage = Page::MAIN_MENU;
+        return;
     }
 
-    Logger::log(std::to_string(convos.size() + 1) + ". Back\n");
-
-    int choice = getUserChoice(1, convos.size() + 1);
-    if (choice == convos.size() + 1) {
-        currentPage = Page::SEND_MESSAGE;
-    } else {
-        client->selectConversation(convos[choice - 1]);
-        currentPage = Page::VIEW_MESSAGES;
+    for (size_t i = 0; i < conversations.size(); ++i) {
+        Logger::log(std::to_string(i + 1) + ". " + conversations[i] + "\n");
     }
+    Logger::log(std::to_string(conversations.size() + 1) + ". Back\n");
+
+    int choice = getUserChoice(1, static_cast<int>(conversations.size() + 1));
+
+    if (choice == static_cast<int>(conversations.size() + 1)) {
+        currentPage = Page::MAIN_MENU;
+        return;
+    }
+
+    activeChatUser_ = conversations[choice - 1];
+    currentPage = Page::VIEW_MESSAGES;
 }
 
 void CLI::handleConversationsInput(int choice) {
 }
 
+// todo still currently shows encrypted metadata
 void CLI::showMessagesPage() {
-    Logger::log("\n=== Messages ===\n");
+    Logger::log("\n=== Messages with " + activeChatUser_ + " ===\n");
+    Logger::log("Fetching messages...\n");
 
-    const auto& msgs = client->getLastMessages();
-    for (const auto& msg : msgs) {
-        Logger::log(msg["from"].get<std::string>() + ": [encrypted]\n");
+    if (!client->getMessages(activeChatUser_)) {
+        Logger::log("Failed to load messages.\n");
+        currentPage = Page::CONVERSATIONS;
+        return;
     }
 
-    Logger::log("\n1. Send message\n");
-    Logger::log("2. Back\n");
+    auto messages = client->getCachedMessages();
 
-    int choice = getUserChoice(1, 2);
+    if (messages.empty()) {
+        Logger::log("No messages in this conversation.\n");
+    } else {
+        for (const auto& m : messages) {
+            std::string from = m.value("from", "");
+            long ts = m.value("timestamp", 0L);
+
+            Logger::log(from + " [" + std::to_string(ts) + "]: [encrypted]\n");
+        }
+    }
+
+    Logger::log("\n1. Refresh\n");
+    Logger::log("2. Send message\n");
+    Logger::log("3. Back\n");
+
+    int choice = getUserChoice(1, 3);
     handleMessagesInput(choice);
 }
 
 void CLI::handleMessagesInput(int choice) {
+    switch (choice) {
+        case 1:
+            // refresh by re-rendering this page
+            currentPage = Page::VIEW_MESSAGES;
+            break;
+
+        case 2: {
+            std::string text;
+            Logger::log("Message: ");
+            std::cin.ignore();
+            std::getline(std::cin, text);
+
+            if (client->sendMessage(activeChatUser_, text)) {
+                Logger::log("Message sent.\n");
+            } else {
+                Logger::log("Failed to send message.\n");
+            }
+
+            currentPage = Page::VIEW_MESSAGES;
+            break;
+        }
+
+        case 3:
+            currentPage = Page::CONVERSATIONS;
+            break;
+    }
 }
 
-// ----------- Input Handling Helper -------------
+// input helper
 int CLI::getUserChoice(int min, int max) {
     int choice;
     while (true) {
-        Logger::log("> ");
+        std::cout << "> ";
         std::cin >> choice;
         if (std::cin.fail() || choice < min || choice > max) {
             std::cin.clear();

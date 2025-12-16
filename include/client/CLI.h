@@ -10,21 +10,23 @@ enum class Page {
     LOGIN,
     CREATE_ACCOUNT,
     SEND_MESSAGE,
-    EXIT
+    EXIT,
+    CONVERSATIONS,
+    VIEW_MESSAGES
 };
 
 class CLI {
 public:
     explicit CLI(std::shared_ptr<Client> client);
 
-    // Run the CLI loop
+    // run CLI loop
     void run();
 
 private:
     std::shared_ptr<Client> client;
     Page currentPage;
 
-    // Page logic
+    // page logic
     void showMainMenu();
     void handleMainMenuInput(int choice);
 
@@ -43,8 +45,11 @@ private:
     void showMessagesPage();
     void handleMessagesInput(int choice);
 
-    // Helper
+    // helpers
     void displayCurrentPage();
     int getUserChoice(int min, int max);
+
+    // username of other user in currently viewed conversation
+    std::string activeChatUser_;
 };
 #endif //ENCRYPTEDMESSENGER_CLI_H
