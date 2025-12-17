@@ -200,7 +200,6 @@ void CLI::showConversationsPage() {
 void CLI::handleConversationsInput(int choice) {
 }
 
-// todo still currently shows encrypted metadata
 void CLI::showMessagesPage() {
     Logger::log("\n=== Messages with " + activeChatUser_ + " ===");
     Logger::log("Fetching messages...");
@@ -211,16 +210,14 @@ void CLI::showMessagesPage() {
         return;
     }
 
-    auto messages = client_->getCachedMessages();
+    // messages in plaintext
+    auto messages = client_->getDecryptedMessages();
 
     if (messages.empty()) {
         Logger::log("No messages in this conversation");
     } else {
-        for (const auto& m : messages) {
-            std::string from = m.value("from", "");
-            long ts = m.value("timestamp", 0L);
-
-            Logger::log(from + " [" + std::to_string(ts) + "]: [encrypted]");
+        for (const auto& text : messages) {
+            Logger::log(text);
         }
     }
 

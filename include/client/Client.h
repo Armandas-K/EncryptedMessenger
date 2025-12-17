@@ -4,6 +4,7 @@
 #include <string>
 #include "network/TcpConnection.h"
 #include "json.hpp"  // nlohmann::json
+#include "crypto/CryptoManager.h"
 
 // represents a single connected user (client-side)
 // responsible for sending structured requests such as login,
@@ -35,7 +36,7 @@ public:
 
     // getters for CLI (copies to avoid returning refs guarded by a mutex)
     std::vector<std::string> getCachedConversations();
-    std::vector<nlohmann::json> getCachedMessages();
+    std::vector<std::string> getDecryptedMessages();
 
     // get private key on login
     std::string loadPrivateKey(const std::string &username);
@@ -55,6 +56,8 @@ private:
 
     // hash a plain-text password using SHA-256 before sending to the server
     std::string hashPassword(const std::string& password);
+    // decrypt users received messages with private key
+    std::string decryptMessage(const nlohmann::json& msg);
 
 private:
     std::shared_ptr<TcpConnection> connection_;  // active TCP connection to the server
@@ -77,6 +80,7 @@ private:
     bool responseReady_ = false;
     // timeout for server responses
     int timeoutMs_ = 500;
+    CryptoManager crypto_;
 };
 
 #endif //ENCRYPTEDMESSENGER_CLIENT_H

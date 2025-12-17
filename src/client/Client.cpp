@@ -1,9 +1,11 @@
 #include "client/Client.h"
-#include <openssl/sha.h>
 #include <sstream>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <openssl/sha.h>
+#include <crypto/CryptoManager.h>
+#include <utils/base64.h>
 #include "utils/Logger.h"
 
 using json = nlohmann::json;
@@ -31,6 +33,32 @@ std::string Client::hashPassword(const std::string& password) {
     for (unsigned char c : hash)
         ss << std::hex << std::setw(2) << std::setfill('0') << (int)c;
     return ss.str();
+}
+
+std::string Client::decryptMessage(const nlohmann::json& msg) {
+    // select correct AES key
+    const std::string& encKeyB64 =
+        (msg["to"] == username_)
+            ? msg["aes_for_recipient"]
+            : msg["aes_for_sender"];
+
+    // decode + decrypt AES key
+    std::string aesKeyStr = crypto_.rsaDecrypt(
+        base64::bytesToString(base64::decode(encKeyB64)),
+        privateKeyPem_
+    );
+
+    std::vector<uint8_t> aesKey(
+        aesKeyStr.begin(), aesKeyStr.end()
+    );
+
+    // decode AES fields
+    auto iv  = base64::decode(msg["iv"]);
+    auto ct  = base64::decode(msg["ciphertext"]);
+    auto tag = base64::decode(msg["tag"]);
+
+    // decrypt message
+    return crypto_.aesDecrypt(aesKey, iv, ct, tag);
 }
 
 bool Client::createAccount(const std::string &username, const std::string &password) {
@@ -131,9 +159,25 @@ std::vector<std::string> Client::getCachedConversations() {
     return conversations_;
 }
 
-std::vector<nlohmann::json> Client::getCachedMessages() {
+std::vector<std::string> Client::getDecryptedMessages() {
     std::lock_guard<std::mutex> lock(responseMutex_);
-    return lastMessages_;
+
+    std::vector<std::string> out;
+    out.reserve(lastMessages_.size());
+
+    for (const auto& msg : lastMessages_) {
+        try {
+            std::string plaintext = decryptMessage(msg);
+
+            std::string from = msg.value("from", "unknown");
+            out.push_back(from + ": " + plaintext);
+        }
+        catch (const std::exception& e) {
+            out.push_back("[Failed to decrypt message]");
+        }
+    }
+
+    return out;
 }
 
 std::string Client::loadPrivateKey(const std::string& username) {

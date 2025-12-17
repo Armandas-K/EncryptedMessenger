@@ -69,6 +69,10 @@ namespace base64 {
         return out;
     }
 
+    inline std::string bytesToString(const std::vector<uint8_t>& v) {
+        return std::string(reinterpret_cast<const char*>(v.data()), v.size());
+    }
+
 }
 
 #endif //ENCRYPTEDMESSENGER_BASE64_H
