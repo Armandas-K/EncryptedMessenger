@@ -1,6 +1,7 @@
 #include "client/Client.h"
 #include <openssl/sha.h>
 #include <sstream>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include "utils/Logger.h"
@@ -135,6 +136,20 @@ std::vector<nlohmann::json> Client::getCachedMessages() {
     return lastMessages_;
 }
 
+std::string Client::loadPrivateKey(const std::string& username) {
+    std::string path = std::string(KEY_PATH) + "/" + username + "/private.pem";
+
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        throw std::runtime_error("Failed to open private key for " + username);
+    }
+
+    return std::string(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
+}
+
 void Client::handleResponse(const std::string& status, const std::string& message) {
     {
         // lock before modifying state
@@ -146,6 +161,13 @@ void Client::handleResponse(const std::string& status, const std::string& messag
         if (pendingAction_ == "login") {
             if (status == "success") {
                 username_ = lastLoginUsername_;
+
+                try {
+                    privateKeyPem_ = loadPrivateKey(username_);
+                } catch (const std::exception& e) {
+                    std::cerr << "[Client] " << e.what() << "\n";
+                }
+
                 Logger::log("[Client] Logged in as: " + username_);
             } else {
                 std::cerr << "[Client] Login failed: " << message << "\n";
@@ -209,7 +231,7 @@ void Client::handleResponse(const std::string& status, const std::string& messag
             responseCv_.notify_one();
             return;
         }
-        // GET MESSAGES
+        /* GET MESSAGES
         if (pendingAction_ == "get_messages") {
             if (status == "success") {
                 // parse json list of messages
@@ -225,7 +247,6 @@ void Client::handleResponse(const std::string& status, const std::string& messag
                     Logger::log("[Client] Retrieved " + std::to_string(lastMessages_.size()) + " messages");
                 }
                 catch (...) {
-                    // todo still being called... fix maybe
                     std::cerr << "[Client] Failed to parse message list JSON\n";
                 }
             } else {
@@ -237,7 +258,7 @@ void Client::handleResponse(const std::string& status, const std::string& messag
             responseCv_.notify_one();
             return;
         }
-
+        */
         // default / unknown action
         if (status == "success") {
             Logger::log("[Client] SUCCESS: " + message);
@@ -263,6 +284,7 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
     if (lastStatus_ == "success" && msg.contains("messages")) {
         lastMessages_.clear();
         for (const auto& m : msg["messages"]) {
+
             lastMessages_.push_back(m);
         }
     }

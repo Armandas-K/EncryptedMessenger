@@ -37,6 +37,9 @@ public:
     std::vector<std::string> getCachedConversations();
     std::vector<nlohmann::json> getCachedMessages();
 
+    // get private key on login
+    std::string loadPrivateKey(const std::string &username);
+
     // helpers
     bool isLoggedIn() const { return !username_.empty(); }
     const std::string& getUsername() const { return username_; }
@@ -56,6 +59,7 @@ private:
 private:
     std::shared_ptr<TcpConnection> connection_;  // active TCP connection to the server
     std::string username_;
+    std::string privateKeyPem_;
 
     // pending action system
     std::string pendingAction_;
