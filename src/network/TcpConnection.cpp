@@ -153,7 +153,7 @@ void TcpConnection::disconnect() {
     socket_.shutdown(asio::ip::tcp::socket::shutdown_both, ec);
     socket_.close(ec);
 
-    Logger::log("[TcpConnection] Disconnected.\n");
+    // Logger::log("[TcpConnection] Disconnected");
 
     if (server_) {
         server_->removeConnection(shared_from_this());
@@ -169,6 +169,13 @@ void TcpConnection::handleAction(const nlohmann::json& message) {
         } else {
             std::cerr << "[TcpConnection] Received request but no server is attached.\n";
         }
+        return;
+    }
+
+    // get messages response
+    if (message.contains("status") && message.contains("messages")) {
+        if (onMessagesResponse_)
+            onMessagesResponse_(message);
         return;
     }
 

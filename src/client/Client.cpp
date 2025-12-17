@@ -16,6 +16,11 @@ Client::Client(std::shared_ptr<TcpConnection> connection)
         {
             this->handleResponse(status, message);
         };
+    // get messages callback
+    connection_->onMessagesResponse_ =
+        [this](const nlohmann::json& msg) {
+            handleMessagesResponse(msg);
+    };
 }
 
 std::string Client::hashPassword(const std::string& password) {
@@ -247,6 +252,23 @@ void Client::handleResponse(const std::string& status, const std::string& messag
         responseReady_ = true;
     }
     // notify outside lock
+    responseCv_.notify_one();
+}
+
+void Client::handleMessagesResponse(const nlohmann::json& msg) {
+    std::lock_guard<std::mutex> lock(responseMutex_);
+
+    lastStatus_ = msg.value("status", "error");
+
+    if (lastStatus_ == "success" && msg.contains("messages")) {
+        lastMessages_.clear();
+        for (const auto& m : msg["messages"]) {
+            lastMessages_.push_back(m);
+        }
+    }
+
+    pendingAction_.clear();
+    responseReady_ = true;
     responseCv_.notify_one();
 }
 

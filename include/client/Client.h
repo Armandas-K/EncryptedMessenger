@@ -44,6 +44,8 @@ public:
 private:
     // used to check if tcpConnection function calls fail or pass
     void handleResponse(const std::string& status, const std::string& message);
+    // check if getMessages call pass or fail
+    void handleMessagesResponse(const nlohmann::json &msg);
 
     // helper for checking success/error response from server
     bool waitForResponse();

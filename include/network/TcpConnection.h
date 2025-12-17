@@ -42,6 +42,7 @@ public:
 
     // callback for client
     std::function<void(const std::string& status, const std::string& message)> onServerResponse_;
+    std::function<void(const nlohmann::json&)> onMessagesResponse_;
 
 private:
     TcpConnection(asio::io_context& io_context, TcpServer* server);
