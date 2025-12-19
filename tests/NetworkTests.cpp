@@ -160,15 +160,15 @@ void testReceiveMessageResponse() {
     assert(receiver.login(userB, "pw") && "Login failed for receiver");
     assert(receiver.getMessages(userA) && "Receiver failed getMessages()");
 
+    auto messages = receiver.getDecryptedMessages();
     // verify at least one message exists
-    assert(!receiver.getDecryptedMessages().empty() && "Receiver got no messages!");
+    assert(!messages.empty() && "Receiver got no messages!");
 
-    // verify last message has expected fields
-    nlohmann::json msg = receiver.getDecryptedMessages().back();
-    assert(msg.contains("from"));
-    assert(msg.contains("to"));
-    assert(msg.contains("ciphertext"));
-    assert(msg.contains("timestamp"));
+    const std::string& last = messages.back();
+
+    // verify last message has text
+    assert(last.find("test_user_") != std::string::npos);
+    assert(last.find("hello") != std::string::npos);
 
     Logger::log("[Test] ReceiveMessageResponse passed\n");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
