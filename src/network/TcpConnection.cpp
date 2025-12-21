@@ -116,9 +116,10 @@ void TcpConnection::send(const std::string& message) {
             if (ec) {
                 std::cerr << "[TcpConnection] Request failed: " << ec.message() << std::endl;
                 disconnect();
-            } else {
-                Logger::log("[TcpConnection] Outgoing request queued for delivery.\n");
             }
+            /*else {
+                Logger::log("[TcpConnection] Outgoing request queued for delivery.\n");
+            }*/
         }
     );
 }
@@ -172,21 +173,42 @@ void TcpConnection::handleAction(const nlohmann::json& message) {
         return;
     }
 
-    // get messages response
-    if (message.contains("status") && message.contains("messages")) {
-        if (onMessagesResponse_)
+    // server to client response
+    std::string status = message.value("status", "unknown");
+
+    // messages response array = messages callback
+    if (message.contains("messages") && message["messages"].is_array()) {
+        if (onMessagesResponse_) {
             onMessagesResponse_(message);
+        }
         return;
     }
 
-    // response (server to client)
-    if (message.contains("status")) {
-        handleServerResponse(message);
+    // conversations response = generic callback
+    if (message.contains("conversations")) {
+        if (onServerResponse_) {
+            onServerResponse_(status, message["conversations"].dump());
+        }
         return;
+    }
+
+    // normal string message = generic callback
+    if (message.contains("message") && message["message"].is_string()) {
+        if (onServerResponse_) {
+            onServerResponse_(status, message["message"].get<std::string>());
+        }
+        return;
+    }
+
+    // fallback
+    if (onServerResponse_) {
+        nlohmann::json copy = message;
+        copy.erase("status");
+        onServerResponse_(status, copy.dump());
     }
 
     // unknown message
-    std::cerr << "[TcpConnection] Unknown message type: " << message.dump() << "\n";
+    // std::cerr << "[TcpConnection] Unknown message type: " << message.dump() << "\n";
 }
 
 void TcpConnection::handleServerResponse(const nlohmann::json& msg) {

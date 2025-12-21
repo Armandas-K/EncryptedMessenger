@@ -135,8 +135,7 @@ void TcpServer::handleSendMessage(TcpConnection::pointer connection, const nlohm
 
 void TcpServer::handleGetMessages(
     TcpConnection::pointer connection,
-    const nlohmann::json& data
-) {
+    const nlohmann::json& data) {
     std::string withUser = data.value("with", "");
 
     if (withUser.empty()) {

@@ -252,9 +252,9 @@ void Client::handleResponse(const std::string& status, const std::string& messag
         if (pendingAction_ == "get_conversations") {
             if (status == "success") {
                 try {
-                    auto obj = json::parse(message);
+                    auto arr = nlohmann::json::parse(message);
                     conversations_.clear();
-                    for (auto& c : obj["conversations"]) {
+                    for (auto& c : arr) {
                         conversations_.push_back(c.get<std::string>());
                     }
                 } catch (...) {

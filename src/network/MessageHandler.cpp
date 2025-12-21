@@ -118,7 +118,7 @@ bool MessageHandler::fetchConversations(TcpConnection::pointer requester) {
         requester->send(R"({"status":"error","message":"Not logged in"})");
         return false;
     }
-
+    // todo doesnt work
     nlohmann::json conversations = storage_.listConversations(user);
 
     nlohmann::json response;
