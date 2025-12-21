@@ -252,22 +252,16 @@ void Client::handleResponse(const std::string& status, const std::string& messag
         if (pendingAction_ == "get_conversations") {
             if (status == "success") {
                 try {
-                    auto jsonObj = nlohmann::json::parse(message);
-
+                    auto obj = json::parse(message);
                     conversations_.clear();
-                    if (jsonObj.contains("conversations") && jsonObj["conversations"].is_array()) {
-                        for (auto& c : jsonObj["conversations"]) {
-                            if (c.is_string())
-                                conversations_.push_back(c.get<std::string>());
-                        }
+                    for (auto& c : obj["conversations"]) {
+                        conversations_.push_back(c.get<std::string>());
                     }
-
-                    Logger::log("[Client] Retrieved " + std::to_string(conversations_.size()) + " conversations");
                 } catch (...) {
-                    std::cerr << "[Client] Failed to parse conversations JSON\n";
+                    std::cerr << "[Client] Failed to parse conversations list\n";
                 }
             } else {
-                std::cerr << "[Client] Failed to retrieve conversations: " << message << "\n";
+                std::cerr << "[Client] Failed to get conversations: " << message << "\n";
             }
 
             pendingAction_.clear();

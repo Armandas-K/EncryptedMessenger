@@ -8,8 +8,7 @@ MessageHandler::MessageHandler(TcpServer* server, FileStorage& storage)
 bool MessageHandler::processMessage(
     TcpConnection::pointer sender,
     const std::string& to,
-    const std::string& message
-) {
+    const std::string& message) {
     std::cout << "proccessMsg called" << "\n";
 
     // server trusted sender
@@ -77,8 +76,7 @@ bool MessageHandler::processMessage(
 
 bool MessageHandler::fetchMessages(
     const TcpConnection::pointer requester,
-    const std::string& withUser
-) {
+    const std::string& withUser) {
     std::string requesterName = requester->getUsername();
 
     if (requesterName.empty()) {
@@ -108,6 +106,24 @@ bool MessageHandler::fetchMessages(
     nlohmann::json response;
     response["status"] = "success";
     response["messages"] = convo["messages"];
+
+    requester->send(response.dump());
+    return true;
+}
+
+bool MessageHandler::fetchConversations(TcpConnection::pointer requester) {
+    std::string user = requester->getUsername();
+
+    if (user.empty()) {
+        requester->send(R"({"status":"error","message":"Not logged in"})");
+        return false;
+    }
+
+    nlohmann::json conversations = storage_.listConversations(user);
+
+    nlohmann::json response;
+    response["status"] = "success";
+    response["conversations"] = conversations;
 
     requester->send(response.dump());
     return true;

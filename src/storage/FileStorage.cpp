@@ -158,6 +158,41 @@ bool FileStorage::userExists(const std::string &username) {
     return userExists_NoLock(username);
 }
 
+nlohmann::json FileStorage::listConversations(const std::string& username) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+
+    nlohmann::json result = nlohmann::json::array();
+    std::filesystem::path root = MESSAGE_PATH;
+
+    std::error_code ec;
+    if (!std::filesystem::exists(root, ec)) {
+        return result;
+    }
+
+    for (const auto& entry : std::filesystem::directory_iterator(root, ec)) {
+        if (ec || !entry.is_directory()) {
+            continue;
+        }
+
+        std::string name = entry.path().filename().string();
+        auto pos = name.find('_');
+        if (pos == std::string::npos) {
+            continue;
+        }
+
+        std::string a = name.substr(0, pos);
+        std::string b = name.substr(pos + 1);
+
+        if (a == username) {
+            result.push_back(b);
+        } else if (b == username) {
+            result.push_back(a);
+        }
+    }
+
+    return result;
+}
+
 bool FileStorage::appendConversationMessage(
     const std::string& from,
     const std::string& to,

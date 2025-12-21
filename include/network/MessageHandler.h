@@ -22,6 +22,9 @@ public:
     // called by tcpServer for receive message action
     bool fetchMessages(TcpConnection::pointer requester, const std::string &withUser);
 
+    // called by tcpServer for get conversations action
+    bool fetchConversations(TcpConnection::pointer requester);
+
 private:
     TcpServer* server_;       // not owned
     FileStorage& storage_;    // reference to storage system

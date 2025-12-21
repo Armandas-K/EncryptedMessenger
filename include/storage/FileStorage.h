@@ -32,6 +32,9 @@ public:
     bool userExists_NoLock(const std::string &username);
     bool userExists(const std::string & username);
 
+    // get all conversations user is in
+    nlohmann::json listConversations(const std::string &username);
+
     // append to message json shared between 2 users
     bool appendConversationMessage(
     const std::string& from,

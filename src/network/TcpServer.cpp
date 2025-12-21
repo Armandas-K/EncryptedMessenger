@@ -48,6 +48,8 @@ void TcpServer::handleAction(TcpConnection::pointer connection, const nlohmann::
         handleLogin(connection, message);
     } else if (action == "send_message") {
         handleSendMessage(connection, message);
+    } else if (action == "get_conversations") {
+        handleGetConversations(connection, message);
     } else if (action == "get_messages") {
         handleGetMessages(connection, message);
     } else {
@@ -111,6 +113,12 @@ void TcpServer::handleLogin(TcpConnection::pointer connection, const nlohmann::j
     connection->setUsername(username);
 
     connection->send(R"({"status":"success","message":"Login successful"})");
+}
+
+void TcpServer::handleGetConversations(
+    TcpConnection::pointer connection,
+    const nlohmann::json& data) {
+    messageHandler_.fetchConversations(connection);
 }
 
 void TcpServer::handleSendMessage(TcpConnection::pointer connection, const nlohmann::json& data) {

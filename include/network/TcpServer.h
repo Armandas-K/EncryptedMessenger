@@ -31,6 +31,7 @@ private:
     // handler declarations
     void handleCreateAccount(TcpConnection::pointer connection, const nlohmann::json &data);
     void handleLogin(TcpConnection::pointer connection, const nlohmann::json &data);
+    void handleGetConversations(TcpConnection::pointer connection, const nlohmann::json &data);
     void handleSendMessage(TcpConnection::pointer connection, const nlohmann::json &data);
     void handleGetMessages(TcpConnection::pointer connection, const nlohmann::json &data);
 
