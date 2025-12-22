@@ -92,6 +92,65 @@ void testLoginRequest() {
 }
 
 // ===================================================
+// GET CONVERSATIONS TEST
+// ===================================================
+
+void testGetConversations() {
+    Logger::log("\n[Test] Running testGetConversations...");
+
+    ClientTestContext ctx;
+    auto connA = TcpConnection::create(ctx.io(), nullptr);
+    auto connB = TcpConnection::create(ctx.io(), nullptr);
+    assert(connA->connect("127.0.0.1", 5555));
+    assert(connB->connect("127.0.0.1", 5555));
+
+    Client clientA(connA);
+    Client clientB(connB);
+    connA->beginRead();
+    connB->beginRead();
+
+    std::string userA = makeUser();
+    std::string userB = makeUser();
+
+    // create accounts
+    assert(clientA.createAccount(userA, "pw"));
+    assert(clientB.createAccount(userB, "pw"));
+
+    // login A
+    assert(clientA.login(userA, "pw"));
+
+    // get empty conversation list
+    assert(clientA.getConversations() && "getConversations failed");
+
+    auto convs = clientA.getCachedConversations();
+    assert(convs.empty() && "Conversations should be empty initially");
+
+    assert(clientA.sendMessage(userB, "hello from A"));
+    assert(clientB.login(userB, "pw"));
+
+    // get conversation list after sending message
+    assert(clientA.getConversations() && "getConversations failed after message");
+
+    // check if not empty
+    convs = clientA.getCachedConversations();
+    assert(!convs.empty() && "Conversation list should not be empty");
+
+    // check userB appears
+    bool found = false;
+    for (const auto& c : convs) {
+        if (c == userB) {
+            found = true;
+            break;
+        }
+    }
+    assert(found && "Conversation with userB not found");
+
+    Logger::log("[Test] GetConversations passed\n");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+
+// ===================================================
 // SEND MESSAGE TEST
 // ===================================================
 
@@ -238,6 +297,7 @@ int main() {
 
     testCreateAccountRequest();
     testLoginRequest();
+    testGetConversations();
     testSendMessageRequest();
     testReceiveMessageResponse();
     testHandleDisconnectedClient();
