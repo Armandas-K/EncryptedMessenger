@@ -54,6 +54,7 @@ bool FileStorage::loadUser() {
 }
 
 std::string FileStorage::makeConversationId(const std::string& a, const std::string& b) {
+    // length prefixed encoding: <lengthA>:<userA>|<lengthB>:<userB>
     if (a < b) {
         return std::to_string(a.size()) + ":" + a + "|" +
                std::to_string(b.size()) + ":" + b;
@@ -77,7 +78,18 @@ auto FileStorage::parseConversationId(const std::string &id) -> std::pair<std::s
     return {a, b};
 }
 
-// todo need a way to decode it back to normal
+std::filesystem::path FileStorage::conversationDirPath_NoLock(const std::string& userA,
+                                                             const std::string& userB) {
+    const std::string id = makeConversationId(userA, userB);
+    const std::string safe = toFilesystemSafe(id);
+    return std::filesystem::path(MESSAGE_PATH) / safe;
+}
+
+std::filesystem::path FileStorage::conversationFilePath_NoLock(const std::string& userA,
+                                                              const std::string& userB) {
+    return conversationDirPath_NoLock(userA, userB) / "conversation.json";
+}
+
 std::string FileStorage::toFilesystemSafe(const std::string& input) {
     std::string b64 = base64::encode(
         reinterpret_cast<const uint8_t*>(input.data()),
@@ -95,6 +107,23 @@ std::string FileStorage::toFilesystemSafe(const std::string& input) {
     }
 
     return b64;
+}
+
+std::string FileStorage::fromFilesystemSafe(const std::string& safe) {
+    std::string b64 = safe;
+
+    for (char& c : b64) {
+        if (c == '-') c = '+';
+        else if (c == '_') c = '/';
+    }
+
+    // restore padding to multiple of 4
+    while (b64.size() % 4 != 0) {
+        b64.push_back('=');
+    }
+
+    std::vector<uint8_t> bytes = base64::decode(b64);
+    return std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
 }
 
 bool FileStorage::createUser(const std::string& username,
@@ -202,40 +231,31 @@ bool FileStorage::userExists(const std::string &username) {
     return userExists_NoLock(username);
 }
 
-// todo doesnt work because usernames can have file delimiter '_' in them
-// change to length prefixed encoding: <lengthA>:<userA>|<lengthB>:<userB>
 nlohmann::json FileStorage::listConversations(const std::string& username) {
     std::lock_guard<std::mutex> lock(file_mutex_);
 
     nlohmann::json result = nlohmann::json::array();
     std::filesystem::path root = MESSAGE_PATH;
 
-    if (!std::filesystem::exists(root)) {
-        return result;
-    }
-
     std::error_code ec;
-    std::filesystem::directory_iterator it(root, ec);
-    if (ec) {
-        std::cerr << "[FileStorage] Failed to iterate messages dir: "
-                  << ec.message() << "\n";
+    if (!std::filesystem::exists(root, ec)) {
         return result;
     }
 
-    for (const auto& entry : it) {
+    for (const auto& entry : std::filesystem::directory_iterator(root, ec)) {
+        if (ec) break;
         if (!entry.is_directory()) continue;
 
-        std::string name = entry.path().filename().string();
-        auto pos = name.find('_');
-        if (pos == std::string::npos) continue;
+        const std::string dirName = entry.path().filename().string();
 
-        std::string a = name.substr(0, pos);
-        std::string b = name.substr(pos + 1);
+        try {
+            const std::string convoId = fromFilesystemSafe(dirName);
+            auto [a, b] = parseConversationId(convoId);
 
-        if (a == username) {
-            result.push_back(b);
-        } else if (b == username) {
-            result.push_back(a);
+            if (a == username) result.push_back(b);
+            else if (b == username) result.push_back(a);
+        } catch (...) {
+            continue;
         }
     }
 
@@ -384,33 +404,38 @@ bool FileStorage::deleteUserKeys_NoLock(const std::string& username) {
 }
 
 bool FileStorage::deleteUserConversations_NoLock(const std::string& username) {
-    std::filesystem::path messagesRoot = MESSAGE_PATH;
+    std::filesystem::path root = MESSAGE_PATH;
     std::error_code ec;
 
-    if (!std::filesystem::exists(messagesRoot, ec)) {
+    if (!std::filesystem::exists(root, ec)) {
         // nothing to delete
         return true;
     }
 
-    for (auto &entry : std::filesystem::directory_iterator(messagesRoot, ec)) {
+    for (const auto& entry : std::filesystem::directory_iterator(root, ec)) {
         if (ec) break;
         if (!entry.is_directory()) continue;
 
-        std::string name = entry.path().filename().string();
-        // check both sides of underscore
-        bool matches = name.find(username + "_") == 0 ||
-            name.rfind("_" + username) == name.size() - username.size() - 1;
+        const std::string dirName = entry.path().filename().string();
 
-        if (matches) {
-            std::error_code ec2;
-            std::filesystem::remove_all(entry.path(), ec2);
-            if (ec2) {
-                std::cerr << "[FileStorage] Failed to delete conversation '"
-                          << name << "': " << ec2.message() << "\n";
-                return false;
+        try {
+            const std::string convoId = fromFilesystemSafe(dirName);
+            auto [a, b] = parseConversationId(convoId);
+
+            if (a == username || b == username) {
+                std::error_code ec2;
+                std::filesystem::remove_all(entry.path(), ec2);
+                if (ec2) {
+                    std::cerr << "[FileStorage] Failed to delete conversation directory: "
+                              << entry.path().string() << " (" << ec2.message() << ")\n";
+                    return false;
+                }
             }
+        } catch (...) {
+            continue;
         }
     }
+
     return true;
 }
 
@@ -427,19 +452,11 @@ bool FileStorage::deleteUser(const std::string& username) {
     return json && keys && convo;
 }
 
-nlohmann::json FileStorage::loadConversation(
-    const std::string& userA,
-    const std::string& userB) {
+nlohmann::json FileStorage::loadConversation(const std::string& userA,
+                                            const std::string& userB) {
     std::lock_guard<std::mutex> lock(file_mutex_);
 
-    std::string folderName = (userA < userB)
-        ? (userA + "_" + userB)
-        : (userB + "_" + userA);
-
-    std::string fullDir = std::string(MESSAGE_PATH) + "/" + folderName;
-    std::string convoFile = fullDir + "/conversation.json";
-
-    nlohmann::json convoJson;
+    const auto convoFile = conversationFilePath_NoLock(userA, userB);
 
     std::ifstream in(convoFile);
     if (!in.is_open()) {
@@ -447,15 +464,16 @@ nlohmann::json FileStorage::loadConversation(
         return nlohmann::json();
     }
 
+    nlohmann::json convoJson;
     try {
         in >> convoJson;
     } catch (...) {
-        std::cerr << "[FileStorage] Invalid JSON in " << convoFile << ", resetting\n";
+        std::cerr << "[FileStorage] Invalid JSON in " << convoFile.string() << ", resetting\n";
         return nlohmann::json();
     }
 
     if (!convoJson.contains("messages")) {
-        return nlohmann::json::object({{"messages", nlohmann::json::array()}});
+        convoJson["messages"] = nlohmann::json::array();
     }
 
     return convoJson;

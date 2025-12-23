@@ -75,10 +75,17 @@ private:
     void initializeDirectories();
     // load users.json data into memory
     bool loadUser();
+
     // helpers for making/parsing conversation directory names
     std::string makeConversationId(const std::string &a, const std::string &b);
     auto parseConversationId(const std::string &id) -> std::pair<std::string, std::string>;
+    std::filesystem::path conversationDirPath_NoLock(const std::string &userA, const std::string &userB);
+    std::filesystem::path conversationFilePath_NoLock(const std::string &userA, const std::string &userB);
+
+
+    // convert between base64url and string (used in conv dirs)
     std::string toFilesystemSafe(const std::string &input);
+    std::string fromFilesystemSafe(const std::string &safe);
 
 private:
     // hardcoded path to user account file
