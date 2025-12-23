@@ -35,6 +35,15 @@ public:
     // get all conversations user is in
     nlohmann::json listConversations(const std::string &username);
 
+    nlohmann::json loadConversationJson_NoLock(const std::filesystem::path &convoFile);
+
+    nlohmann::json buildMessageEntry_NoLock(const std::string &from, const std::string &to,
+                                            const CryptoManager::AESEncrypted &ciphertext,
+                                            const std::string &aesForSender,
+                                            const std::string &aesForRecipient, long timestamp);
+
+    bool saveConversationJson_NoLock(const std::filesystem::path &convoFile, const nlohmann::json &convo);
+
     // append to message json shared between 2 users
     bool appendConversationMessage(
     const std::string& from,
@@ -66,6 +75,10 @@ private:
     void initializeDirectories();
     // load users.json data into memory
     bool loadUser();
+    // helpers for making/parsing conversation directory names
+    std::string makeConversationId(const std::string &a, const std::string &b);
+    auto parseConversationId(const std::string &id) -> std::pair<std::string, std::string>;
+    std::string toFilesystemSafe(const std::string &input);
 
 private:
     // hardcoded path to user account file

@@ -53,6 +53,50 @@ bool FileStorage::loadUser() {
     return true;
 }
 
+std::string FileStorage::makeConversationId(const std::string& a, const std::string& b) {
+    if (a < b) {
+        return std::to_string(a.size()) + ":" + a + "|" +
+               std::to_string(b.size()) + ":" + b;
+    } else {
+        return std::to_string(b.size()) + ":" + b + "|" +
+               std::to_string(a.size()) + ":" + a;
+    }
+}
+
+auto FileStorage::parseConversationId(const std::string &id) -> std::pair<std::string, std::string> {
+    size_t colon1 = id.find(':');
+    size_t pipe   = id.find('|');
+
+    int lenA = std::stoi(id.substr(0, colon1));
+    std::string a = id.substr(colon1 + 1, lenA);
+
+    size_t colon2 = id.find(':', pipe);
+    int lenB = std::stoi(id.substr(pipe + 1, colon2 - pipe - 1));
+    std::string b = id.substr(colon2 + 1, lenB);
+
+    return {a, b};
+}
+
+// todo need a way to decode it back to normal
+std::string FileStorage::toFilesystemSafe(const std::string& input) {
+    std::string b64 = base64::encode(
+        reinterpret_cast<const uint8_t*>(input.data()),
+        input.size()
+    );
+
+    for (char& c : b64) {
+        if (c == '+') c = '-';
+        else if (c == '/') c = '_';
+    }
+
+    // strip padding
+    while (!b64.empty() && b64.back() == '=') {
+        b64.pop_back();
+    }
+
+    return b64;
+}
+
 bool FileStorage::createUser(const std::string& username,
                              const std::string& password_hash) {
     std::lock_guard<std::mutex> lock(file_mutex_);
@@ -158,27 +202,32 @@ bool FileStorage::userExists(const std::string &username) {
     return userExists_NoLock(username);
 }
 
+// todo doesnt work because usernames can have file delimiter '_' in them
+// change to length prefixed encoding: <lengthA>:<userA>|<lengthB>:<userB>
 nlohmann::json FileStorage::listConversations(const std::string& username) {
     std::lock_guard<std::mutex> lock(file_mutex_);
 
     nlohmann::json result = nlohmann::json::array();
     std::filesystem::path root = MESSAGE_PATH;
 
-    std::error_code ec;
-    if (!std::filesystem::exists(root, ec)) {
+    if (!std::filesystem::exists(root)) {
         return result;
     }
 
-    for (const auto& entry : std::filesystem::directory_iterator(root, ec)) {
-        if (ec || !entry.is_directory()) {
-            continue;
-        }
+    std::error_code ec;
+    std::filesystem::directory_iterator it(root, ec);
+    if (ec) {
+        std::cerr << "[FileStorage] Failed to iterate messages dir: "
+                  << ec.message() << "\n";
+        return result;
+    }
+
+    for (const auto& entry : it) {
+        if (!entry.is_directory()) continue;
 
         std::string name = entry.path().filename().string();
         auto pos = name.find('_');
-        if (pos == std::string::npos) {
-            continue;
-        }
+        if (pos == std::string::npos) continue;
 
         std::string a = name.substr(0, pos);
         std::string b = name.substr(pos + 1);
@@ -193,55 +242,34 @@ nlohmann::json FileStorage::listConversations(const std::string& username) {
     return result;
 }
 
-bool FileStorage::appendConversationMessage(
+nlohmann::json FileStorage::loadConversationJson_NoLock(
+    const std::filesystem::path& convoFile) {
+    nlohmann::json convo;
+
+    std::ifstream in(convoFile);
+    if (in.is_open() && in.peek() != std::ifstream::traits_type::eof()) {
+        try {
+            in >> convo;
+        } catch (...) {
+            std::cerr << "[FileStorage] Invalid JSON in conversation file, resetting.\n";
+            convo = nlohmann::json::object();
+        }
+    }
+
+    if (!convo.contains("messages")) {
+        convo["messages"] = nlohmann::json::array();
+    }
+
+    return convo;
+}
+
+nlohmann::json FileStorage::buildMessageEntry_NoLock(
     const std::string& from,
     const std::string& to,
     const CryptoManager::AESEncrypted& ciphertext,
     const std::string& aesForSender,
     const std::string& aesForRecipient,
     long timestamp) {
-    std::lock_guard<std::mutex> lock(file_mutex_);
-
-    // build folder: messages/userA_userB
-    // folder name always alphabetical
-    std::string folderName =
-        (from < to) ? (from + "_" + to) : (to + "_" + from);
-
-    std::string fullDir = std::string(MESSAGE_PATH) + "/" + folderName;
-
-    /// Create directories recursively
-    std::error_code ec;
-    std::filesystem::create_directories(fullDir, ec);
-
-    if (ec) {
-        std::cerr << "[FileStorage] Failed to create directory: "
-                  << fullDir << " (" << ec.message() << ")\n";
-        return false;
-    }
-
-    // path to conversation file
-    std::string convoFile = fullDir + "/conversation.json";
-
-    nlohmann::json convoJson;
-
-    // if file exists load it
-    {
-        std::ifstream in(convoFile);
-        if (in.is_open() && in.peek() != std::ifstream::traits_type::eof()) {
-            try {
-                in >> convoJson;
-            } catch (...) {
-                std::cerr << "[FileStorage] Invalid JSON in conversation, resetting.\n";
-                convoJson = nlohmann::json::object();
-            }
-        }
-    }
-
-    // ensure structure exists
-    if (!convoJson.contains("messages"))
-        convoJson["messages"] = nlohmann::json::array();
-
-    // -------- Append new message --------
     nlohmann::json entry;
     entry["from"]              = from;
     entry["to"]                = to;
@@ -252,17 +280,63 @@ bool FileStorage::appendConversationMessage(
     entry["aes_for_sender"]    = base64::encode(aesForSender);
     entry["aes_for_recipient"] = base64::encode(aesForRecipient);
 
-    convoJson["messages"].push_back(entry);
+    return entry;
+}
 
-    // -------- Save back to file --------
+bool FileStorage::saveConversationJson_NoLock(
+    const std::filesystem::path& convoFile,
+    const nlohmann::json& convo) {
     std::ofstream out(convoFile);
     if (!out.is_open()) {
-        std::cerr << "[FileStorage] Failed to write conversation file.\n";
+        std::cerr << "[FileStorage] Failed to write conversation file: "
+                  << convoFile << "\n";
         return false;
     }
 
-    out << convoJson.dump(4);
+    out << convo.dump(4);
     return true;
+}
+
+bool FileStorage::appendConversationMessage(
+    const std::string& from,
+    const std::string& to,
+    const CryptoManager::AESEncrypted& ciphertext,
+    const std::string& aesForSender,
+    const std::string& aesForRecipient,
+    long timestamp) {
+    std::lock_guard<std::mutex> lock(file_mutex_);
+
+    // make conversation id and directory
+    const std::string convoDirName =
+    toFilesystemSafe(makeConversationId(from, to));
+    const auto convoDir = std::filesystem::path(MESSAGE_PATH) / convoDirName;
+    const auto convoFile = convoDir / "conversation.json";
+
+    // check if directory exists
+    std::error_code ec;
+    std::filesystem::create_directories(convoDir, ec);
+    if (ec) {
+        std::cerr << "[FileStorage] Failed to create directory: "
+                  << convoDir << " (" << ec.message() << ")\n";
+        return false;
+    }
+
+    // load/initialise conversation
+    nlohmann::json convo = loadConversationJson_NoLock(convoFile);
+
+    // append message
+    convo["messages"].push_back(
+        buildMessageEntry_NoLock(
+            from,
+            to,
+            ciphertext,
+            aesForSender,
+            aesForRecipient,
+            timestamp
+        )
+    );
+
+    return saveConversationJson_NoLock(convoFile, convo);
 }
 
 bool FileStorage::saveUser_NoLock() {
