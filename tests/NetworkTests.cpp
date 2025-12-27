@@ -8,12 +8,18 @@
 #include "utils/ClientTestContext.h"
 #include "utils/Logger.h"
 
+// helpers
+static void logTest(const std::string& name) {
+    Logger::log("\n[Test] Running " + name);
+}
+static void passTest(const std::string& name) {
+    Logger::log("[Test] " + name + " passed");
+}
+
 // ===================================================
 // Delete Old User Data
 // ===================================================
 
-// could reset entire file system with ofstream but that would require
-// a directory for test user data separate from normal data
 void resetUsers() {
     FileStorage storage = FileStorage();
     for (int i = 0; i < 10; i++) {
@@ -49,7 +55,7 @@ std::string makeUser() {
 
 // create 2 users
 void testCreateAccountRequest() {
-    Logger::log("\n[Test] Running testCreateAccountRequest...");
+    logTest("Create Account");
 
     ClientTestContext ctx;
 
@@ -65,7 +71,7 @@ void testCreateAccountRequest() {
     assert(client.createAccount(u1, "pw") && "Failed to create first account");
     assert(client.createAccount(u2, "pw") && "Failed to create second account");
 
-    Logger::log("[Test] CreateAccountRequest passed\n");
+    passTest("Create Account");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -74,7 +80,7 @@ void testCreateAccountRequest() {
 // ===================================================
 
 void testLoginRequest() {
-    Logger::log("\n[Test] Running testLoginRequest...");
+    logTest("Login Request");
 
     ClientTestContext ctx;
     auto conn = TcpConnection::create(ctx.io(), nullptr);
@@ -87,7 +93,7 @@ void testLoginRequest() {
     assert(client.createAccount(user, "pw"));
     assert(client.login(user, "pw"));
 
-    Logger::log("[Test] LoginRequest passed\n");
+    passTest("Login Request");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -96,7 +102,7 @@ void testLoginRequest() {
 // ===================================================
 
 void testGetConversations() {
-    Logger::log("\n[Test] Running testGetConversations...");
+    logTest("Get Conversations");
 
     ClientTestContext ctx;
     auto connA = TcpConnection::create(ctx.io(), nullptr);
@@ -145,8 +151,7 @@ void testGetConversations() {
     }
     assert(found && "Conversation with userB not found");
 
-    Logger::log("[Test] GetConversations passed\n");
-
+    passTest("Get Conversations");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -155,7 +160,7 @@ void testGetConversations() {
 // ===================================================
 
 void testSendMessageRequest() {
-    Logger::log("\n[Test] Running testSendMessageRequest...");
+    logTest("Send MessageRequest");
 
     ClientTestContext ctx;
 
@@ -181,7 +186,7 @@ void testSendMessageRequest() {
     assert(sender.sendMessage(userB, "Hello!") &&
            "Failed to send message to valid user");
 
-    Logger::log("[Test] SendMessageRequest passed\n");
+    passTest("Send MessageRequest");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -190,7 +195,7 @@ void testSendMessageRequest() {
 // ===================================================
 
 void testReceiveMessageResponse() {
-    Logger::log("\n[Test] Running testReceiveMessageResponse...");
+    logTest("Receive Message Response");
 
     ClientTestContext ctx;
 
@@ -229,7 +234,7 @@ void testReceiveMessageResponse() {
     assert(last.find("test_user_") != std::string::npos);
     assert(last.find("hello") != std::string::npos);
 
-    Logger::log("[Test] ReceiveMessageResponse passed\n");
+    passTest("Receive Message Response");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -238,7 +243,7 @@ void testReceiveMessageResponse() {
 // ===================================================
 
 void testHandleDisconnectedClient() {
-    Logger::log("\n[Test] Running testHandleDisconnectedClient...");
+    logTest("Handle Disconnected Client");
 
     ClientTestContext ctx;
 
@@ -254,7 +259,7 @@ void testHandleDisconnectedClient() {
 
     assert(!conn->socket().is_open() && "Socket should be closed");
 
-    Logger::log("[Test] HandleDisconnectedClient passed\n");
+    passTest("Handle Disconnected Client");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -262,8 +267,8 @@ void testHandleDisconnectedClient() {
 // MULTIPLE CLIENTS TEST
 // ===================================================
 
-void testMultipleClientsSimultaneousConnections() {
-    Logger::log("\n[Test] Running testMultipleClientsSimultaneousConnections...");
+void testMultipleClientConnections() {
+    logTest("Multiple Client Connections");
 
     ClientTestContext ctx;
 
@@ -273,7 +278,7 @@ void testMultipleClientsSimultaneousConnections() {
         conn->beginRead();
     }
 
-    Logger::log("[Test] MultipleClientsSimultaneousConnections passed\n");
+    passTest("Multiple Client Connections");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
 
@@ -301,10 +306,10 @@ int main() {
     testSendMessageRequest();
     testReceiveMessageResponse();
     testHandleDisconnectedClient();
-    testMultipleClientsSimultaneousConnections();
+    testMultipleClientConnections();
     std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
-    Logger::log("\nAll tests executed.\n");
+    Logger::log("\nAll network tests executed");
 
     if (serverThread.joinable())
         serverThread.detach();

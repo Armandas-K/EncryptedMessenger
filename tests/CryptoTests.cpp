@@ -6,9 +6,12 @@
 #include "crypto/CryptoManager.h"
 #include "utils/Logger.h"
 
-// helper
+// helpers
 static void logTest(const std::string& name) {
-    Logger::log("\n[Test] " + name);
+    Logger::log("\n[Test] Running " + name);
+}
+static void passTest(const std::string& name) {
+    Logger::log("[Test] " + name + " passed");
 }
 
 // ===================================================
@@ -24,7 +27,7 @@ void testRSAKeyGeneration() {
     assert(!keys.publicKeyPem.empty());
     assert(!keys.privateKeyPem.empty());
 
-    Logger::log("[PASS] RSA Key Generation");
+    passTest("RSA Key Generation");
 }
 
 void testRSAEncryptDecrypt() {
@@ -39,7 +42,7 @@ void testRSAEncryptDecrypt() {
 
     assert(decrypted == plaintext);
 
-    Logger::log("[PASS] RSA Encrypt/Decrypt");
+    passTest("RSA Encrypt/Decrypt");
 }
 
 // ===================================================
@@ -64,7 +67,7 @@ void testAESRoundTrip() {
 
     assert(decrypted == plaintext);
 
-    Logger::log("[PASS] AES Encrypt/Decrypt");
+    passTest("AES Encrypt/Decrypt");
 }
 
 void testAESRandomness() {
@@ -81,7 +84,7 @@ void testAESRandomness() {
     // iv or ciphertext should be different
     assert(e1.ciphertext != e2.ciphertext);
 
-    Logger::log("[PASS] AES Randomness");
+    passTest("AES Randomness");
 }
 
 void testAESTamperDetection() {
@@ -110,7 +113,7 @@ void testAESTamperDetection() {
 
     assert(failed && "AES-GCM should detect tampering");
 
-    Logger::log("[PASS] AES Tamper Detection");
+    passTest("AES Tamper Detection");
 }
 
 // ===================================================
@@ -128,6 +131,6 @@ int main() {
     testAESRandomness();
     testAESTamperDetection();
 
-    Logger::log("\nAll crypto tests passed.\n");
+    Logger::log("\nAll crypto tests executed");
     return 0;
 }

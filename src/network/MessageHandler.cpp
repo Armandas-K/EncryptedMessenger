@@ -9,7 +9,6 @@ bool MessageHandler::processMessage(
     TcpConnection::pointer sender,
     const std::string& to,
     const std::string& message) {
-    std::cout << "proccessMsg called" << "\n";
 
     // server trusted sender
     std::string from = sender->getUsername();
