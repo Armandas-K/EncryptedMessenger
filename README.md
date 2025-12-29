@@ -14,66 +14,48 @@
 
 ## Dependencies
 
-This project is written in C++20 and built with CMake. It uses a few third-party libraries that are vendored or installed via a package manager.
+This project is written in C++20 and built with CMake. It uses a few third-party libraries that are vendored or installed using a package manager
 
 ### Core tools
 
-- **C++ Compiler** with C++20 support
-    - Tested with **MinGW-w64 / GCC 13.1.0** on Windows 11
-- **CMake** ≥ 3.28
+- C++ Compiler with C++20 support
+    - Tested with MinGW-w64 / GCC 13.1.0 on Windows 11
+- CMake minimum version 3.28
 
 ### Crypto & networking
 
 - **OpenSSL** 3.6.0
-    - Installed via **vcpkg** as `openssl:x64-mingw-dynamic` or `openssl:x64-windows`
-    - Project uses CMake’s `find_package(OpenSSL REQUIRED)` and links against:
+    - Installed via vcpkg as `openssl:x64-mingw-dynamic` or `openssl:x64-windows`
+    - Project uses CMakes `find_package(OpenSSL REQUIRED)` and links:
         - `OpenSSL::SSL`
         - `OpenSSL::Crypto`
-    - OpenSSL project: https://github.com/openssl/openssl
+    - OpenSSL: https://github.com/openssl/openssl
     - vcpkg: https://github.com/microsoft/vcpkg
 
-- **Asio** (standalone, header-only, non-Boost)
+
+- **Asio** 1.36.0 (standalone, header-only, non-boost)
     - Included under `third_party/asio`
-    - Tested with Asio **1.36.x** using (`asio::io_context`, `asio::ip::tcp::socket`, etc.)
     - Upstream: https://github.com/chriskohlhoff/asio
 
 ### JSON
 
 - **nlohmann/json** 3.12.0
     - Included under `third_party/json`
-    - Header `json.hpp` is used and made available via:
-        - `#include "json.hpp"`
     - Upstream: https://github.com/nlohmann/json
 
 ### Platform specifics (Windows)
 
-The project currently targets Windows 10/11 with MinGW-w64 / GCC.
+The project currently works for Windows 10/11 with MinGW-w64
 
-Key points:
+- `_WIN32_WINNT` is set to 0x0A00 (Windows 10/11) for Asio
 
-- `_WIN32_WINNT` is set to **0x0A00** (Windows 10/11) for Asio:
-
-      add_compile_definitions(_WIN32_WINNT=0x0A00)
-
-- Winsock libraries are linked so Asio’s TCP sockets work correctly:
-
-      target_link_libraries(messenger_common
-          PRIVATE
-          OpenSSL::SSL
-          OpenSSL::Crypto
-          ws2_32
-          mswsock
-      )
+- Winsock libraries are linked so Asio’s TCP sockets work correctly
 
 - `data/` is configured using compile-time macros:
 
       set(USER_DATA_PATH "${CMAKE_SOURCE_DIR}/data/users.json")
       set(KEY_DATA_PATH "${CMAKE_SOURCE_DIR}/data/keys")
       set(MESSAGE_DATA_PATH "${CMAKE_SOURCE_DIR}/data/messages")
-
-      add_compile_definitions(USERS_PATH="${USER_DATA_PATH}")
-      add_compile_definitions(KEY_PATH="${KEY_DATA_PATH}")
-      add_compile_definitions(MESSAGE_PATH="${MESSAGE_DATA_PATH}")
 
 At runtime the program automatically creates:
 
@@ -95,12 +77,12 @@ Clone the repository:
 
 Requirements:
 
-- **CMake ≥ 3.28**
+- **CMake >= 3.28**
 - **C++20 compiler** (MinGW-w64 recommended)
-- **vcpkg** (used for OpenSSL)
+- **vcpkg** (for OpenSSL)
 - Vendored dependencies:
-    - Asio (standalone) — third_party/asio
-    - nlohmann/json — third_party/json
+    - Asio (standalone)
+    - nlohmann/json
 
 ### 2.1 Install vcpkg
 
@@ -110,31 +92,44 @@ Requirements:
 
 ### 2.2 Install OpenSSL via vcpkg
 
-MSVC triplet:
-
-    vcpkg install openssl:x64-windows
-
-MinGW example:
+MinGW (Recommended):
 
     vcpkg install openssl:x64-mingw-dynamic
 
-Asio and JSON are bundled in the project
+MSVC:
+
+    vcpkg install openssl:x64-windows
+
 
 ### 3. Configure the CMake Project
 
-Run CMake and point it at your vcpkg toolchain file:
+This project uses vcpkg for OpenSSL
+
+#### Option A: Using CLion (Recommended)
+
+In **Settings / Build, Execution, Deployment / CMake**, add to CMake options:
+
+    -DCMAKE_TOOLCHAIN_FILE=C:/Users/user/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic
+
+#### Option B: Command Line
 
 PowerShell:
 
-    cmake -B build -S . `
-      -DCMAKE_BUILD_TYPE=Debug `
-      -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake"
+```powershell
+cmake -B build -S . `
+  -DCMAKE_BUILD_TYPE=Debug `
+  -DCMAKE_TOOLCHAIN_FILE="C:/Users/user/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+  -DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic
+```
 
 cmd:
 
-    cmake -B build -S . ^
-      -DCMAKE_BUILD_TYPE=Debug ^
-      -DCMAKE_TOOLCHAIN_FILE="C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake"
+```cmd
+cmake -B build -S . ^
+  -DCMAKE_BUILD_TYPE=Debug ^
+  -DCMAKE_TOOLCHAIN_FILE="C:/Users/user/vcpkg/scripts/buildsystems/vcpkg.cmake" ^
+  -DVCPKG_TARGET_TRIPLET=x64-mingw-dynamic
+```
 
 This CMake project:
 
@@ -168,23 +163,22 @@ Executables will appear in `build/`:
 Run server:
 
     cd build
-    ./messenger_server.exe
+    .\messenger_server.exe
 
-Run client:
+Then on seperate terminal or CLion run client:
 
-    cd build
-    ./messenger_client.exe
+    .\messenger_client.exe
 
 ### 6. Running Tests
 
 Run:
 
-    ./test_crypto.exe
-    ./test_network.exe
+    .\test_crypto.exe
+    .\test_network.exe
 
 test_crypto tests:
 - RSA/AES encryption
-- hashing functions
+- AES randomness/tamper detection
 
 test_network tests:
 - account creation/login

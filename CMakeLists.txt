@@ -75,6 +75,8 @@ target_link_libraries(test_network PRIVATE messenger_common)
 
 # Ensure console subsystem for MinGW
 if (MINGW)
+    set_target_properties(messenger_client PROPERTIES LINK_FLAGS "-Wl,-subsystem,console")
+    set_target_properties(messenger_server PROPERTIES LINK_FLAGS "-Wl,-subsystem,console")
     set_target_properties(test_crypto PROPERTIES LINK_FLAGS "-Wl,-subsystem,console")
     set_target_properties(test_network PROPERTIES LINK_FLAGS "-Wl,-subsystem,console")
 endif()
