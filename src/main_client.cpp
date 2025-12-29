@@ -6,7 +6,9 @@ int main() {
     try {
         asio::io_context io;
 
-        // asio background thread
+        // work guard so io doesnt exit
+        auto work = asio::make_work_guard(io);
+
         std::thread ioThread([&]() {
             io.run();
         });
@@ -15,6 +17,7 @@ int main() {
         cli.run();
 
         // shutdown
+        work.reset();
         io.stop();
         ioThread.join();
     }

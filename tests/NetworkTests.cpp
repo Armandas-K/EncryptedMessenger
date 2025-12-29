@@ -311,6 +311,8 @@ int main() {
 
     Logger::log("\nAll network tests executed");
 
+    resetUsers();
+
     if (serverThread.joinable())
         serverThread.detach();
 

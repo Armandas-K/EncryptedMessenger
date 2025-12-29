@@ -269,34 +269,7 @@ void Client::handleResponse(const std::string& status, const std::string& messag
             responseCv_.notify_one();
             return;
         }
-        /* GET MESSAGES
-        if (pendingAction_ == "get_messages") {
-            if (status == "success") {
-                // parse json list of messages
-                try {
-                    auto jsonObj = nlohmann::json::parse(message);
 
-                    lastMessages_.clear();
-                    if (jsonObj.contains("messages")) {
-                        for (auto& m : jsonObj["messages"])
-                            lastMessages_.push_back(m);
-                    }
-
-                    Logger::log("[Client] Retrieved " + std::to_string(lastMessages_.size()) + " messages");
-                }
-                catch (...) {
-                    std::cerr << "[Client] Failed to parse message list JSON\n";
-                }
-            } else {
-                std::cerr << "[Client] Failed to retrieve messages: " << message << "\n";
-            }
-
-            pendingAction_.clear();
-            responseReady_ = true;
-            responseCv_.notify_one();
-            return;
-        }
-        */
         // default / unknown action
         if (status == "success") {
             Logger::log("[Client] SUCCESS: " + message);

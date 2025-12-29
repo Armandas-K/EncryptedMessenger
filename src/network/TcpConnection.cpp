@@ -24,19 +24,6 @@ bool TcpConnection::beginRead() {
         std::cerr << "[TcpConnection] Cannot start: socket is not open.\n";
         return false;
     }
-    // logging connections opening isnt needed
-    /*
-    try {
-        auto endpoint = socket_.remote_endpoint();
-        Logger::log("[TcpConnection] Started connection from: "
-                  + endpoint.address().to_string() + ":"
-                  + std::to_string(endpoint.port()));
-    } catch (const std::system_error& e) {
-        std::cerr << "[TcpConnection] Could not retrieve remote endpoint: "
-                  << e.what() << std::endl;
-        // connection might still be valid
-    }
-    */
 
     readAction();
     return true;
