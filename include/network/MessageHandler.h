@@ -19,6 +19,9 @@ public:
         const std::string& message
     );
 
+    // called before trying to get messages with user
+    bool checkUserExists(TcpConnection::pointer requester, const std::string &username);
+
     // called by tcpServer for receive message action
     bool fetchMessages(TcpConnection::pointer requester, const std::string &withUser);
 

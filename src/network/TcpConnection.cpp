@@ -179,6 +179,14 @@ void TcpConnection::handleAction(const nlohmann::json& message) {
         return;
     }
 
+    // user exist check response = dump bool
+    if (message.contains("exists")) {
+        if (onServerResponse_) {
+            onServerResponse_(status, message.dump());
+        }
+        return;
+    }
+
     // normal string message = generic callback
     if (message.contains("message") && message["message"].is_string()) {
         if (onServerResponse_) {
@@ -193,9 +201,6 @@ void TcpConnection::handleAction(const nlohmann::json& message) {
         copy.erase("status");
         onServerResponse_(status, copy.dump());
     }
-
-    // unknown message
-    // std::cerr << "[TcpConnection] Unknown message type: " << message.dump() << "\n";
 }
 
 void TcpConnection::handleServerResponse(const nlohmann::json& msg) {

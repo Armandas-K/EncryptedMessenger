@@ -34,6 +34,9 @@ public:
     // receive messages from conversation with this user and withUser
     bool getMessages(const std::string &withUser);
 
+    // query if user exists before trying to get messages with them
+    bool userExists(const std::string &username);
+
     // getters for CLI (copies to avoid returning refs guarded by a mutex)
     std::vector<std::string> getCachedConversations();
     std::vector<std::string> getDecryptedMessages();

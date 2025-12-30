@@ -73,6 +73,16 @@ bool MessageHandler::processMessage(
     return true;
 }
 
+bool MessageHandler::checkUserExists(
+    const TcpConnection::pointer requester,
+    const std::string& username) {
+    nlohmann::json response;
+    response["status"] = "success";
+    response["exists"] = storage_.userExists(username);
+    requester->send(response.dump());
+    return true;
+}
+
 bool MessageHandler::fetchMessages(
     const TcpConnection::pointer requester,
     const std::string& withUser) {
@@ -96,8 +106,11 @@ bool MessageHandler::fetchMessages(
     // load conversation JSON
     nlohmann::json convo = storage_.loadConversation(requesterName, withUser);
 
-    if (convo.is_null()) {
-        requester->send(R"({"status":"success","message":"[]"})");
+    if (convo.is_null() || !convo.contains("messages")) {
+        nlohmann::json response;
+        response["status"] = "success";
+        response["messages"] = nlohmann::json::array();
+        requester->send(response.dump());
         return true;
     }
 
@@ -117,7 +130,7 @@ bool MessageHandler::fetchConversations(TcpConnection::pointer requester) {
         requester->send(R"({"status":"error","message":"Not logged in"})");
         return false;
     }
-    // todo doesnt work
+
     nlohmann::json conversations = storage_.listConversations(user);
 
     nlohmann::json response;

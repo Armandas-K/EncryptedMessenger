@@ -28,7 +28,8 @@ void TcpServer::startAccept() {
 
 void TcpServer::handleAccept(TcpConnection::pointer new_connection, const std::error_code& error) {
     if (!error) {
-        Logger::log("[TcpServer] New connection accepted.\n");
+        Logger::log("[TcpServer] New Connection accepted. Active connections: "
+            + std::to_string(active_connections_.size()+1));
         active_connections_.push_back(new_connection);
         new_connection->beginRead();
     } else {
@@ -52,6 +53,8 @@ void TcpServer::handleAction(TcpConnection::pointer connection, const nlohmann::
         handleGetConversations(connection, message);
     } else if (action == "get_messages") {
         handleGetMessages(connection, message);
+    } else if (action == "user_exists") {
+        handleUserExists(connection, message);
     } else {
         std::cerr << "[TcpServer] Unknown action: " << action << std::endl;
     }
@@ -145,6 +148,24 @@ void TcpServer::handleGetMessages(
 
     // query storage
     messageHandler_.fetchMessages(connection, withUser);
+}
+
+void TcpServer::handleUserExists(TcpConnection::pointer connection,
+                                 const nlohmann::json& data) {
+    const std::string username = data.value("username", "");
+
+    if (username.empty()) {
+        connection->send(R"({"status":"error","message":"Missing username"})");
+        return;
+    }
+
+    bool exists = storage_.userExists(username);
+
+    nlohmann::json response;
+    response["status"] = "success";
+    response["exists"] = exists;
+
+    connection->send(response.dump());
 }
 
 void TcpServer::removeConnection(TcpConnection::pointer connection) {

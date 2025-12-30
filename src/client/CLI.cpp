@@ -155,53 +155,88 @@ void CLI::handleSendMessageInput(int choice) {
             break;
         }
         case 2:
+            client_->logout();
             currentPage_ = Page::MAIN_MENU;
             break;
     }
 }
 
+
 void CLI::showConversationsPage() {
     Logger::log("\n=== Conversations ===");
-    Logger::log("Fetching conversations...");
+    Logger::log("1. Start new conversation");
+    Logger::log("2. Refresh");
+    Logger::log("3. Log out");
 
     if (!client_->getConversations()) {
-        Logger::log("Failed to load conversations");
-        currentPage_ = Page::MAIN_MENU;
-        return;
+            Logger::log("Failed to load conversations");
+            currentPage_ = Page::MAIN_MENU;
+            return;
     }
 
     auto conversations = client_->getCachedConversations();
 
-    if (conversations.empty()) {
-        Logger::log("No conversations found");
-        Logger::log("1. Back");
-        int choice = getUserChoice(1, 1);
-        (void)choice;
-        currentPage_ = Page::MAIN_MENU;
-        return;
-    }
-
     for (size_t i = 0; i < conversations.size(); ++i) {
-        Logger::log(std::to_string(i + 1) + ". " + conversations[i] + "");
-    }
-    Logger::log(std::to_string(conversations.size() + 1) + ". Back");
-
-    int choice = getUserChoice(1, static_cast<int>(conversations.size() + 1));
-
-    if (choice == static_cast<int>(conversations.size() + 1)) {
-        currentPage_ = Page::MAIN_MENU;
-        return;
+        Logger::log(std::to_string(i + 4) + ". " + conversations[i]);
     }
 
-    activeChatUser_ = conversations[choice - 1];
-    currentPage_ = Page::VIEW_MESSAGES;
+    int choice = getUserChoice(1, static_cast<int>(conversations.size() + 3));
+    handleConversationsInput(choice);
 }
 
 void CLI::handleConversationsInput(int choice) {
+    auto conversations = client_->getCachedConversations();
+
+    if (choice == 1) {
+        std::string user;
+        Logger::log("Enter username to chat with: ");
+        std::cin >> user;
+
+        if (user == client_->getUsername()) {
+            Logger::log("Cannot start conversation with yourself");
+            return;
+        }
+
+        if (!client_->userExists(user)) {
+            Logger::log("User does not exist");
+            currentPage_ = Page::CONVERSATIONS;
+            return;
+        }
+
+        activeChatUser_ = user;
+        currentPage_ = Page::VIEW_MESSAGES;
+        return;
+    }
+
+    if (choice == 2) {
+        client_->getConversations();
+        currentPage_ = Page::CONVERSATIONS;
+        return;
+    }
+
+    if (choice == 3) {
+        client_->logout();
+        currentPage_ = Page::MAIN_MENU;
+        return;
+    }
+
+    // existing conversation
+    size_t index = choice - 4;
+    if (index < conversations.size()) {
+        activeChatUser_ = conversations[index];
+        currentPage_ = Page::VIEW_MESSAGES;
+    }
 }
 
 void CLI::showMessagesPage() {
     Logger::log("\n=== Messages with " + activeChatUser_ + " ===");
+
+    if (activeChatUser_.empty()) {
+        Logger::log("Invalid conversation");
+        currentPage_ = Page::CONVERSATIONS;
+        return;
+    }
+
     Logger::log("Fetching messages...");
 
     if (!client_->getMessages(activeChatUser_)) {

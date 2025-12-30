@@ -98,6 +98,29 @@ bool Client::login(const std::string& username, const std::string& password) {
     return waitForResponse();
 }
 
+bool Client::logout() {
+    std::lock_guard<std::mutex> lock(responseMutex_);
+
+    // clear identity
+    username_.clear();
+    privateKeyPem_.clear();
+    lastLoginUsername_.clear();
+
+    // clear cached data
+    conversations_.clear();
+    lastMessages_.clear();
+
+    // clear pending/response state
+    pendingAction_.clear();
+    lastStatus_.clear();
+    lastMessage_.clear();
+    responseReady_ = false;
+
+    Logger::log("[Client] Logged out");
+
+    return true;
+}
+
 bool Client::sendMessage(const std::string& to, const std::string& message) {
     if (!connection_ || !connection_->socket().is_open()) {
         std::cerr << "[Client] Cannot send message: no active connection\n";
@@ -148,6 +171,18 @@ bool Client::getMessages(const std::string& withUser) {
     json msg = {
         {"action", "get_messages"},
         {"with", withUser}
+    };
+
+    connection_->send(msg.dump());
+    return waitForResponse();
+}
+
+bool Client::userExists(const std::string& username) {
+    pendingAction_ = "user_exists";
+
+    json msg = {
+        {"action", "user_exists"},
+        {"username", username}
     };
 
     connection_->send(msg.dump());
@@ -267,6 +302,25 @@ void Client::handleResponse(const std::string& status, const std::string& messag
             pendingAction_.clear();
             responseReady_ = true;
             responseCv_.notify_one();
+            return;
+        }
+        // USER EXISTS
+        if (pendingAction_ == "user_exists") {
+            bool exists = false;
+
+            try {
+                auto obj = nlohmann::json::parse(message);
+                exists = obj.value("exists", false);
+            } catch (...) {
+                exists = false;
+            }
+
+            pendingAction_.clear();
+            responseReady_ = true;
+            responseCv_.notify_one();
+
+            // override lastStatus_ so waitForResponse returns correctly
+            lastStatus_ = exists ? "success" : "error";
             return;
         }
 
