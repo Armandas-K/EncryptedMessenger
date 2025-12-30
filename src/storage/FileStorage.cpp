@@ -460,20 +460,32 @@ nlohmann::json FileStorage::loadConversation(const std::string& userA,
 
     std::ifstream in(convoFile);
     if (!in.is_open()) {
-        // empty = no conversation
-        return nlohmann::json();
+        return nlohmann::json{
+                {"messages", nlohmann::json::array()}
+        };
     }
 
     nlohmann::json convoJson;
     try {
         in >> convoJson;
     } catch (...) {
-        std::cerr << "[FileStorage] Invalid JSON in " << convoFile.string() << ", resetting\n";
-        return nlohmann::json();
+        std::cerr << "[FileStorage] Invalid JSON in "
+                  << convoFile.string() << ", resetting\n";
+
+        return nlohmann::json{
+                {"messages", nlohmann::json::array()}
+        };
     }
 
-    if (!convoJson.contains("messages")) {
+    if (!convoJson.contains("messages") || !convoJson["messages"].is_array()) {
         convoJson["messages"] = nlohmann::json::array();
+    }
+
+    // ensure message has timestamp
+    for (auto& msg : convoJson["messages"]) {
+        if (!msg.contains("timestamp")) {
+            msg["timestamp"] = 0L;
+        }
     }
 
     return convoJson;

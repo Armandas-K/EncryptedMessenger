@@ -17,15 +17,15 @@ public:
 
     // send a request to create a new account on the server
     // hashes the password before transmission
-    // returns true if the request was successfully sent
     bool createAccount(const std::string& username, const std::string& password);
 
     // send a login request to the server using hashed password credentials
-    // returns true if the request was successfully sent
     bool login(const std::string& username, const std::string& password);
 
+    // clear loaded info
+    bool logout();
+
     // send a message to another user through the server
-    // message routing and delivery confirmation will be handled by the server
     bool sendMessage(const std::string &recipient, const std::string &message);
 
     // get list of users conversations

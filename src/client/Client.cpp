@@ -205,9 +205,21 @@ std::vector<std::string> Client::getDecryptedMessages() {
             std::string plaintext = decryptMessage(msg);
 
             std::string from = msg.value("from", "unknown");
-            out.push_back(from + ": " + plaintext);
+            long ts = msg.value("timestamp", 0L);
+
+            // format timestamp
+            std::time_t t = static_cast<std::time_t>(ts);
+            std::tm tm{};
+            localtime_s(&tm, &t);
+
+            std::ostringstream timeStr;
+            timeStr << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+
+            out.push_back(
+                "[" + timeStr.str() + "] " + from + ": " + plaintext
+            );
         }
-        catch (const std::exception& e) {
+        catch (const std::exception&) {
             out.push_back("[Failed to decrypt message]");
         }
     }
