@@ -189,6 +189,21 @@ bool Client::userExists(const std::string& username) {
     return waitForResponse();
 }
 
+bool Client::fetchPublicKey(const std::string& username) {
+    if (!connection_ || !connection_->socket().is_open()) return false;
+
+    pendingAction_ = "get_public_key";
+    requestedPublicKeyUser_ = username;
+
+    nlohmann::json req = {
+        {"action", "get_public_key"},
+        {"username", username}
+    };
+
+    connection_->send(req.dump());
+    return waitForResponse();
+}
+
 std::vector<std::string> Client::getCachedConversations() {
     std::lock_guard<std::mutex> lock(responseMutex_);
     return conversations_;
@@ -239,6 +254,25 @@ std::string Client::loadPrivateKey(const std::string& username) {
         (std::istreambuf_iterator<char>(file)),
         std::istreambuf_iterator<char>()
     );
+}
+
+std::string Client::getPublicKeyCachedOrFetch(const std::string& username) {
+    {
+        std::lock_guard<std::mutex> lock(responseMutex_);
+        auto it = publicKeyCache_.find(username);
+        if (it != publicKeyCache_.end()) return it->second;
+    }
+
+    if (!fetchPublicKey(username)) {
+        throw std::runtime_error("Failed to fetch public key for " + username);
+    }
+
+    std::lock_guard<std::mutex> lock(responseMutex_);
+    auto it = publicKeyCache_.find(username);
+    if (it == publicKeyCache_.end()) {
+        throw std::runtime_error("Public key missing after fetch for " + username);
+    }
+    return it->second;
 }
 
 void Client::handleResponse(const std::string& status, const std::string& message) {
@@ -333,6 +367,20 @@ void Client::handleResponse(const std::string& status, const std::string& messag
 
             // override lastStatus_ so waitForResponse returns correctly
             lastStatus_ = exists ? "success" : "error";
+            return;
+        }
+        // GET PUBLIC KEY
+        if (pendingAction_ == "get_public_key") {
+            if (status == "success") {
+                // message contains the PEM
+                publicKeyCache_[requestedPublicKeyUser_] = message;
+            } else {
+                std::cerr << "[Client] Failed to get public key: " << message << "\n";
+            }
+
+            pendingAction_.clear();
+            responseReady_ = true;
+            responseCv_.notify_one();
             return;
         }
 

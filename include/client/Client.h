@@ -37,12 +37,18 @@ public:
     // query if user exists before trying to get messages with them
     bool userExists(const std::string &username);
 
+    // used for
+    bool fetchPublicKey(const std::string &username);
+
     // getters for CLI (copies to avoid returning refs guarded by a mutex)
     std::vector<std::string> getCachedConversations();
     std::vector<std::string> getDecryptedMessages();
 
     // get private key on login
     std::string loadPrivateKey(const std::string &username);
+
+    // attempt getting pub key from cache, or fetch and add to cache
+    std::string getPublicKeyCachedOrFetch(const std::string &username);
 
     // helpers
     bool isLoggedIn() const { return !username_.empty(); }
@@ -67,6 +73,10 @@ private:
     std::string username_;
     std::string privateKeyPem_;
 
+    // key cache for users client is messaging
+    std::unordered_map<std::string, std::string> publicKeyCache_;
+    std::string requestedPublicKeyUser_;
+
     // pending action system
     std::string pendingAction_;
     std::string lastLoginUsername_;
@@ -81,8 +91,11 @@ private:
     std::mutex responseMutex_;
     std::condition_variable responseCv_;
     bool responseReady_ = false;
+
     // timeout for server responses
     int timeoutMs_ = 500;
+
+    //client side encryption/decryption
     CryptoManager crypto_;
 };
 
