@@ -84,9 +84,6 @@ endif()
 # Set to windows 10/11 for asio
 add_compile_definitions(_WIN32_WINNT=0x0A00)
 
-# Generate absolute path to the project's data/ directory
-set(USER_DATA_PATH "${CMAKE_SOURCE_DIR}/data/users.json")
-
 # Pass to C++ as a macro
 set(USER_DATA_PATH "${CMAKE_SOURCE_DIR}/data/users.json")
 set(KEY_DATA_PATH "${CMAKE_SOURCE_DIR}/data/keys")
