@@ -37,7 +37,7 @@ public:
     // query if user exists before trying to get messages with them
     bool userExists(const std::string &username);
 
-    // used for
+    // get user pubkey, only called by getPublicKeyCachedOrFetch if key not cached
     bool fetchPublicKey(const std::string &username);
 
     // getters for CLI (copies to avoid returning refs guarded by a mutex)
@@ -65,6 +65,10 @@ private:
 
     // hash a plain-text password using SHA-256 before sending to the server
     std::string hashPassword(const std::string& password);
+
+    // encrypt with recipients pubkey before sending message
+    nlohmann::json encryptMessagePayload(const std::string &to, const std::string &plaintext);
+
     // decrypt users received messages with private key
     std::string decryptMessage(const nlohmann::json& msg);
 

@@ -1,70 +1,65 @@
 #include "network/MessageHandler.h"
 #include "network/tcpServer.h"
 #include "utils/Logger.h"
+#include "utils/base64.h"
 
 MessageHandler::MessageHandler(TcpServer* server, FileStorage& storage)
     : server_(server), storage_(storage), crypto_() {}
 
 bool MessageHandler::processMessage(
     TcpConnection::pointer sender,
-    const std::string& to,
-    const std::string& message) {
-
-    // server trusted sender
+    const nlohmann::json& message) {
     std::string from = sender->getUsername();
-
     if (from.empty()) {
         sender->send(R"({"status":"error","message":"User not logged in"})");
         return false;
     }
 
-    if (to.empty() || message.empty()) {
-        sender->send(R"({"status":"error","message":"Missing fields"})");
-        return false;
-    }
+    nlohmann::json payload = message["payload"];
 
-    // validate recipient exists
+    // validate required fields
+    if (!payload.contains("to") ||
+        !payload.contains("ciphertext") ||
+        !payload.contains("iv") ||
+        !payload.contains("tag") ||
+        !payload.contains("aes_for_sender") ||
+        !payload.contains("aes_for_recipient")) {
+
+        sender->send(R"({"status":"error","message":"Invalid payload"})");
+        return false;
+        }
+
+    std::string to = payload["to"];
+
     if (!storage_.userExists(to)) {
         sender->send(R"({"status":"error","message":"Recipient does not exist"})");
         return false;
     }
 
-    // fetch RSA public keys
-    std::string sender_pub    = storage_.getUserPublicKey(from);
-    std::string recipient_pub = storage_.getUserPublicKey(to);
+    long timestamp =
+        std::chrono::system_clock::to_time_t(
+            std::chrono::system_clock::now());
 
-    if (sender_pub.empty() || recipient_pub.empty()) {
-        sender->send(R"({"status":"error","message":"Missing RSA keys"})");
-        return false;
-    }
+    auto ivB64  = payload["iv"].get<std::string>();
+    auto ctB64  = payload["ciphertext"].get<std::string>();
+    auto tagB64 = payload["tag"].get<std::string>();
+    auto aesSB64 = payload["aes_for_sender"].get<std::string>();
+    auto aesRB64 = payload["aes_for_recipient"].get<std::string>();
 
-    // encrypt message with AES
-    std::vector<uint8_t> aes_key = crypto_.generateAESKey();
-    CryptoManager::AESEncrypted ciphertext = crypto_.aesEncrypt(message, aes_key);
-
-    // Convert AES key to string using black magic
-    std::string aes_key_str(
-        reinterpret_cast<char*>(aes_key.data()),
-        aes_key.size()
-    );
-
-    // encrypt AES key for both users
-    std::string aes_for_sender    = crypto_.rsaEncrypt(aes_key_str, sender_pub);
-    std::string aes_for_recipient = crypto_.rsaEncrypt(aes_key_str, recipient_pub);
-
-    long timestamp = std::chrono::system_clock::to_time_t(
-        std::chrono::system_clock::now()
-    );
-
-    bool stored = storage_.appendConversationMessage(
+    bool ok = storage_.appendConversationMessage(
         from,
         to,
-        ciphertext,
-        aes_for_sender,
-        aes_for_recipient,
+        CryptoManager::AESEncrypted{
+            base64::decode(ivB64),
+            base64::decode(ctB64),
+            base64::decode(tagB64)
+        },
+        base64::bytesToString(base64::decode(aesSB64)),
+        base64::bytesToString(base64::decode(aesRB64)),
         timestamp
     );
-    if (!stored) {
+
+    if (!ok) {
         sender->send(R"({"status":"error","message":"Failed to save message"})");
         return false;
     }

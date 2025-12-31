@@ -46,8 +46,11 @@ namespace base64 {
     }
 
     inline std::vector<uint8_t> decode(const std::string& s) {
-        std::vector<int> T(256, -1);
-        for (int i = 0; i < 64; i++) T[chars[i]] = i;
+        static std::vector<int> T = []{
+            std::vector<int> t(256, -1);
+            for (int i = 0; i < 64; i++) t[(unsigned char)chars[i]] = i;
+            return t;
+        }();
 
         std::vector<uint8_t> out;
         out.reserve(s.size() * 3 / 4);
@@ -56,8 +59,16 @@ namespace base64 {
         int valb = -8;
 
         for (unsigned char c : s) {
-            if (T[c] == -1) break;
-            val = (val << 6) + T[c];
+            if (c == '=' ) break; // padding = end
+            if (c == '\n' || c == '\r' || c == ' ' || c == '\t') continue; // ignore whitespace
+
+            int d = T[c];
+            if (d == -1) {
+                // invalid character
+                break;
+            }
+
+            val = (val << 6) + d;
             valb += 6;
 
             if (valb >= 0) {
@@ -65,7 +76,6 @@ namespace base64 {
                 valb -= 8;
             }
         }
-
         return out;
     }
 

@@ -13,11 +13,7 @@ public:
     MessageHandler(TcpServer* server, FileStorage& storage);
 
     // called by tcpServer for send message action
-    bool processMessage(
-        TcpConnection::pointer sender,
-        const std::string& to,
-        const std::string& message
-    );
+    bool processMessage(TcpConnection::pointer sender, const nlohmann::json &payload);
 
     // called before trying to get messages with user
     bool checkUserExists(TcpConnection::pointer requester, const std::string &username);

@@ -35,6 +35,52 @@ std::string Client::hashPassword(const std::string& password) {
     return ss.str();
 }
 
+nlohmann::json Client::encryptMessagePayload(
+    const std::string& to,
+    const std::string& plaintext) {
+    if (username_.empty()) throw std::runtime_error("Not logged in");
+    if (privateKeyPem_.empty()) throw std::runtime_error("Private key not loaded");
+
+    // get pubkey edits pendingAction_ but system only works with 1 function 1 request
+    // save previous send_message pendingAction before it is overwritten by get_pub_key
+    std::string savedAction;
+    {
+        std::lock_guard<std::mutex> lock(responseMutex_);
+        savedAction = pendingAction_;
+        pendingAction_.clear();
+    }
+    // pubkeys from cache or server
+    std::string recipientPub = getPublicKeyCachedOrFetch(to);
+    std::string senderPub    = getPublicKeyCachedOrFetch(username_);
+    {
+        std::lock_guard<std::mutex> lock(responseMutex_);
+        pendingAction_ = savedAction;
+    }
+
+
+    // generate AES key and encrypt
+    std::vector<uint8_t> aesKey = crypto_.generateAESKey();
+    CryptoManager::AESEncrypted enc = crypto_.aesEncrypt(plaintext, aesKey);
+
+    // convert AES key bytes to string
+    std::string aesKeyStr(reinterpret_cast<const char*>(aesKey.data()), aesKey.size());
+
+    // RSA encrypt AES key for sender + recipient
+    std::string aesForSender    = crypto_.rsaEncrypt(aesKeyStr, senderPub);
+    std::string aesForRecipient = crypto_.rsaEncrypt(aesKeyStr, recipientPub);
+
+    // build payload (base64 for transport)
+    nlohmann::json payload;
+    payload["to"] = to;
+    payload["ciphertext"]        = base64::encode(enc.ciphertext);
+    payload["iv"]                = base64::encode(enc.iv);
+    payload["tag"]               = base64::encode(enc.tag);
+    payload["aes_for_sender"]    = base64::encode(aesForSender);
+    payload["aes_for_recipient"] = base64::encode(aesForRecipient);
+
+    return payload;
+}
+
 std::string Client::decryptMessage(const nlohmann::json& msg) {
     // select correct AES key
     const std::string& encKeyB64 =
@@ -121,21 +167,35 @@ bool Client::logout() {
     return true;
 }
 
-bool Client::sendMessage(const std::string& to, const std::string& message) {
+bool Client::sendMessage(const std::string& to,
+                         const std::string& message) {
     if (!connection_ || !connection_->socket().is_open()) {
         std::cerr << "[Client] Cannot send message: no active connection\n";
         return false;
     }
 
+    if (username_.empty()) {
+        std::cerr << "[Client] Cannot send message: not logged in\n";
+        return false;
+    }
+
     pendingAction_ = "send_message";
 
-    json msg = {
-        {"action", "send_message"},
-        {"to", to},
-        {"message", message}
-    };
+    try {
+        nlohmann::json encrypted = encryptMessagePayload(to, message);
 
-    connection_->send(msg.dump());
+        nlohmann::json req;
+        req["action"] = "send_message";
+        req["payload"] = encrypted;
+
+        connection_->send(req.dump());
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[Client] Encryption failed: " << e.what() << "\n";
+        pendingAction_.clear();
+        return false;
+    }
+
     return waitForResponse();
 }
 

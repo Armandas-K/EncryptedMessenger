@@ -55,6 +55,8 @@ void TcpServer::handleAction(TcpConnection::pointer connection, const nlohmann::
         handleGetMessages(connection, message);
     } else if (action == "user_exists") {
         handleUserExists(connection, message);
+    } else if (action == "get_public_key") {
+        handleGetPublicKey(connection, message);
     } else {
         std::cerr << "[TcpServer] Unknown action: " << action << std::endl;
     }
@@ -95,7 +97,6 @@ void TcpServer::handleCreateAccount(
         return;
     }
 
-    // Success
     connection->send(R"({"status":"success","message":"Account created"})");
 }
 
@@ -125,15 +126,7 @@ void TcpServer::handleGetConversations(
 }
 
 void TcpServer::handleSendMessage(TcpConnection::pointer connection, const nlohmann::json& data) {
-    std::string to = data.value("to", "");
-    std::string message = data.value("message", "");
-
-    if (to.empty() || message.empty()) {
-        connection->send(R"({"status":"error","message":"Invalid message format"})");
-        return;
-    }
-
-    messageHandler_.processMessage(connection, to, message);
+    messageHandler_.processMessage(connection, data);
 }
 
 void TcpServer::handleGetMessages(
@@ -146,7 +139,6 @@ void TcpServer::handleGetMessages(
         return;
     }
 
-    // query storage
     messageHandler_.fetchMessages(connection, withUser);
 }
 
@@ -166,6 +158,32 @@ void TcpServer::handleUserExists(TcpConnection::pointer connection,
     response["exists"] = exists;
 
     connection->send(response.dump());
+}
+
+void TcpServer::handleGetPublicKey(
+    TcpConnection::pointer connection,
+    const nlohmann::json& data) {
+    std::string user = data.value("username", "");
+    if (user.empty()) {
+        connection->send(R"({"status":"error","message":"Missing username"})");
+        return;
+    }
+
+    if (!storage_.userExists(user)) {
+        connection->send(R"({"status":"error","message":"User does not exist"})");
+        return;
+    }
+
+    std::string pub = storage_.getUserPublicKey(user);
+    if (pub.empty()) {
+        connection->send(R"({"status":"error","message":"Public key not found"})");
+        return;
+    }
+
+    nlohmann::json resp;
+    resp["status"] = "success";
+    resp["message"] = pub; // PEM as JSON string
+    connection->send(resp.dump());
 }
 
 void TcpServer::removeConnection(TcpConnection::pointer connection) {
