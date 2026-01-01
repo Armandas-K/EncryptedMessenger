@@ -45,9 +45,6 @@ public:
     std::vector<std::string> getCachedConversations();
     std::vector<std::string> getDecryptedMessages();
 
-    // get private key on login
-    std::string loadPrivateKey(const std::string &username);
-
     // attempt getting pub key from cache, or fetch and add to cache
     std::string getPublicKeyCachedOrFetch(const std::string &username);
 

@@ -115,10 +115,19 @@ bool Client::createAccount(const std::string &username, const std::string &passw
 
     pendingAction_ = "create_account";
 
+    keyStore_ = std::make_unique<KeyStore>(username);
+    // generate keys for new account
+    CryptoManager::RSAKeyPair kp = crypto_.generateRSAKeyPair();
+
+    // store keys locally
+    keyStore_->savePrivateKey(kp.privateKeyPem);
+    keyStore_->savePublicKey(kp.publicKeyPem);
+
     json msg = {
         {"action", "create_account"},
         {"username", username},
-        {"password_hash", hashPassword(password)}
+        {"password_hash", hashPassword(password)},
+        {"public_key", kp.publicKeyPem}
     };
 
     connection_->send(msg.dump());
@@ -302,37 +311,28 @@ std::vector<std::string> Client::getDecryptedMessages() {
     return out;
 }
 
-std::string Client::loadPrivateKey(const std::string& username) {
-    std::string path = std::string(KEY_PATH) + "/" + username + "/private.pem";
-
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw std::runtime_error("Failed to open private key for " + username);
+std::string Client::getPublicKeyCachedOrFetch(const std::string& user) {
+    // get clients own pubkey
+    if (user == username_) {
+        return keyStore_->loadPublicKey();
     }
 
-    return std::string(
-        (std::istreambuf_iterator<char>(file)),
-        std::istreambuf_iterator<char>()
-    );
-}
-
-std::string Client::getPublicKeyCachedOrFetch(const std::string& username) {
+    // attempt cache lookup
     {
         std::lock_guard<std::mutex> lock(responseMutex_);
-        auto it = publicKeyCache_.find(username);
-        if (it != publicKeyCache_.end()) return it->second;
+        if (auto it = publicKeyCache_.find(user); it != publicKeyCache_.end()) {
+            return it->second;
+        }
     }
 
-    if (!fetchPublicKey(username)) {
-        throw std::runtime_error("Failed to fetch public key for " + username);
+    // fetch from server
+    if (!fetchPublicKey(user)) {
+        throw std::runtime_error("Failed to fetch public key for " + user);
     }
 
+    // add fetched pubkey to cache
     std::lock_guard<std::mutex> lock(responseMutex_);
-    auto it = publicKeyCache_.find(username);
-    if (it == publicKeyCache_.end()) {
-        throw std::runtime_error("Public key missing after fetch for " + username);
-    }
-    return it->second;
+    return publicKeyCache_.at(user);
 }
 
 void Client::handleResponse(const std::string& status, const std::string& message) {
@@ -350,7 +350,7 @@ void Client::handleResponse(const std::string& status, const std::string& messag
                 keyStore_ = std::make_unique<KeyStore>(username_);
 
                 try {
-                    privateKeyPem_ = loadPrivateKey(username_);
+                    privateKeyPem_ = keyStore_->loadPrivateKey();
                 } catch (const std::exception& e) {
                     std::cerr << "[Client] " << e.what() << "\n";
                 }
