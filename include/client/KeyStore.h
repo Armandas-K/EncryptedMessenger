@@ -4,6 +4,7 @@
 #include <string>
 #include <filesystem>
 
+// throws runtime errors unlike most of the client functions
 class KeyStore {
 public:
     explicit KeyStore(const std::string& username);
@@ -26,6 +27,9 @@ private:
     // dir same as exec
     std::filesystem::path baseDir_;
     std::filesystem::path userDir_;
+
+    std::filesystem::path privateKeyPath() const;
+    std::filesystem::path publicKeyPath() const;
 };
 
 #endif //ENCRYPTEDMESSENGER_KEYSTORE_H

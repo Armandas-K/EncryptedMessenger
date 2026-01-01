@@ -3,7 +3,8 @@
 
 #include <string>
 #include "network/TcpConnection.h"
-#include "json.hpp"  // nlohmann::json
+#include "json.hpp"
+#include "KeyStore.h"
 #include "crypto/CryptoManager.h"
 
 // represents a single connected user (client-side)
@@ -99,8 +100,9 @@ private:
     // timeout for server responses
     int timeoutMs_ = 500;
 
-    //client side encryption/decryption
+    // client side encryption/decryption and key management
     CryptoManager crypto_;
+    std::unique_ptr<KeyStore> keyStore_;
 };
 
 #endif //ENCRYPTEDMESSENGER_CLIENT_H

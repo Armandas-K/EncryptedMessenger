@@ -347,6 +347,8 @@ void Client::handleResponse(const std::string& status, const std::string& messag
             if (status == "success") {
                 username_ = lastLoginUsername_;
 
+                keyStore_ = std::make_unique<KeyStore>(username_);
+
                 try {
                     privateKeyPem_ = loadPrivateKey(username_);
                 } catch (const std::exception& e) {
