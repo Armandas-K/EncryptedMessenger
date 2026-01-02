@@ -1,6 +1,5 @@
 #include "network/tcpServer.h"
 #include <iostream>
-
 #include "utils/Logger.h"
 
 TcpServer::TcpServer(asio::io_context& io_context, unsigned short port)
@@ -63,13 +62,14 @@ void TcpServer::handleAction(TcpConnection::pointer connection, const nlohmann::
 }
 
 void TcpServer::handleCreateAccount(
-        TcpConnection::pointer connection,
-        const nlohmann::json& data) {
-    std::string username = data.value("username", "");
-    std::string password_hash = data.value("password_hash", "");
+    TcpConnection::pointer connection,
+    const nlohmann::json& data) {
+    const std::string username      = data.value("username", "");
+    const std::string password_hash = data.value("password_hash", "");
+    const std::string public_key    = data.value("public_key", "");
 
-    if (username.empty() || password_hash.empty()) {
-        connection->send(R"({"status":"error","message":"Missing credentials"})");
+    if (username.empty() || password_hash.empty() || public_key.empty()) {
+        connection->send(R"({"status":"error","message":"Missing credentials or public key"})");
         return;
     }
 
@@ -87,13 +87,12 @@ void TcpServer::handleCreateAccount(
         return;
     }
 
-    // generate RSA key files
-    if (!storage_.createUserKeyFiles_NoLock(username)) {
-        // rollback user keys and json entry
-        storage_.deleteUserKeys_NoLock(username);
+    // store public key
+    if (!storage_.storeUserPublicKey_NoLock(username, public_key)) {
+        // rollback
         storage_.deleteUserJson_NoLock(username);
         storage_.saveUser_NoLock();
-        connection->send(R"({"status":"error","message":"Failed to create user key files"})");
+        connection->send(R"({"status":"error","message":"Failed to store public key"})");
         return;
     }
 

@@ -19,8 +19,8 @@ public:
     // add new user, returns true if created successfully, false if username exists
     bool createUser_NoLock(const std::string& username, const std::string& password_hash);
 
-    // make keys for encryption on account creation
-    bool createUserKeyFiles_NoLock(const std::string& username);
+    // store public key on account creation
+    bool storeUserPublicKey_NoLock(const std::string &username, const std::string &publicKeyPem);
 
     // verify username and hashed password against users.json data
     bool loginUser(const std::string& username, const std::string& password_hash);

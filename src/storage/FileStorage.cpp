@@ -148,42 +148,30 @@ bool FileStorage::createUser_NoLock(const std::string& username, const std::stri
     return saveUser_NoLock();
 }
 
-bool FileStorage::createUserKeyFiles_NoLock(
-    const std::string& username) {
+bool FileStorage::storeUserPublicKey_NoLock(
+    const std::string& username,
+    const std::string& publicKeyPem) {
 
-    // build "keys/username"
-    std::string userKeyDir = std::string(KEY_PATH) + "/" + username;
+    // build keys/username
+    std::filesystem::path userKeyDir =
+        std::filesystem::path(KEY_PATH) / username;
 
-    // create user directory in data/keys/
-    _mkdir(userKeyDir.c_str());
-
-    // generate RSA keypair
-    CryptoManager crypto;
-    CryptoManager::RSAKeyPair keys;
-    try {
-        keys = crypto.generateRSAKeyPair();
-    } catch (const std::exception& e) {
-        std::cerr << "[FileStorage] RSA key generation failed: " << e.what() << std::endl;
+    std::error_code ec;
+    std::filesystem::create_directories(userKeyDir, ec);
+    if (ec) {
+        std::cerr << "[FileStorage] Failed to create key dir: "
+                  << ec.message() << "\n";
         return false;
     }
 
-    std::string pubPath  = userKeyDir + "/public.pem";
-    std::string privPath = userKeyDir + "/private.pem";
-
-    // write public key
-    {
-        std::ofstream out(pubPath);
-        if (!out.is_open()) return false;
-        out << keys.publicKeyPem;
+    // write public.pem
+    std::filesystem::path pubPath = userKeyDir / "public.pem";
+    std::ofstream out(pubPath);
+    if (!out.is_open()) {
+        return false;
     }
 
-    // write private key
-    {
-        std::ofstream out(privPath);
-        if (!out.is_open()) return false;
-        out << keys.privateKeyPem;
-    }
-
+    out << publicKeyPem;
     return true;
 }
 
