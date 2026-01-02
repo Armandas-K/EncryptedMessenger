@@ -45,6 +45,9 @@ public:
     std::vector<std::string> getCachedConversations();
     std::vector<std::string> getDecryptedMessages();
 
+    // clear cached messages when client switches conversations
+    void clearCachedMessages();
+
     // attempt getting pub key from cache, or fetch and add to cache
     std::string getPublicKeyCachedOrFetch(const std::string &username);
 
@@ -86,6 +89,9 @@ private:
     // cached data for CLI
     std::vector<std::string> conversations_;
     std::vector<nlohmann::json> lastMessages_;
+
+    // per-conversation timestamps for efficient pull with getMessages
+    std::unordered_map<std::string, long> lastSeenTimestamps_;
 
     // server response checking/debug
     std::string lastStatus_;

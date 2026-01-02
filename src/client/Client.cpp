@@ -164,6 +164,7 @@ bool Client::logout() {
     // clear cached data
     conversations_.clear();
     lastMessages_.clear();
+    keyStore_.reset();
 
     // clear pending/response state
     pendingAction_.clear();
@@ -237,9 +238,20 @@ bool Client::getMessages(const std::string& withUser) {
 
     pendingAction_ = "get_messages";
 
+    // find last seen timestamp for this conversation, 0 = full conv
+    long since = 0;
+    {
+        std::lock_guard<std::mutex> lock(responseMutex_);
+        auto it = lastSeenTimestamps_.find(withUser);
+        if (it != lastSeenTimestamps_.end()) {
+            since = it->second;
+        }
+    }
+
     json msg = {
         {"action", "get_messages"},
-        {"with", withUser}
+        {"with", withUser},
+        {"since", since}
     };
 
     connection_->send(msg.dump());
@@ -309,6 +321,11 @@ std::vector<std::string> Client::getDecryptedMessages() {
     }
 
     return out;
+}
+
+void Client::clearCachedMessages() {
+    std::lock_guard<std::mutex> lock(responseMutex_);
+    lastMessages_.clear();
 }
 
 std::string Client::getPublicKeyCachedOrFetch(const std::string& user) {
@@ -468,11 +485,22 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
 
     lastStatus_ = msg.value("status", "error");
 
+    // append new messages, only cleared by cli when conversation changes
+    // expects only new messages, doesnt check for duplicates
     if (lastStatus_ == "success" && msg.contains("messages")) {
-        lastMessages_.clear();
         for (const auto& m : msg["messages"]) {
-
             lastMessages_.push_back(m);
+
+            long ts = m.value("timestamp", 0L);
+            const std::string& from = m.value("from", "");
+            const std::string& to   = m.value("to", "");
+
+            // get other users username
+            std::string other =
+                (from == username_) ? to : from;
+
+            auto& lastSeen = lastSeenTimestamps_[other];
+            lastSeen = std::max(lastSeen, ts);
         }
     }
 
