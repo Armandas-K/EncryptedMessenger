@@ -440,17 +440,20 @@ bool FileStorage::deleteUser(const std::string& username) {
     return json && keys && convo;
 }
 
-nlohmann::json FileStorage::loadConversation(const std::string& userA,
-                                            const std::string& userB) {
+nlohmann::json FileStorage::loadConversationSince(
+    const std::string& userA,
+    const std::string& userB,
+    long lastSeen) {
     std::lock_guard<std::mutex> lock(file_mutex_);
 
     const auto convoFile = conversationFilePath_NoLock(userA, userB);
 
+    nlohmann::json result;
+    result["messages"] = nlohmann::json::array();
+
     std::ifstream in(convoFile);
     if (!in.is_open()) {
-        return nlohmann::json{
-                {"messages", nlohmann::json::array()}
-        };
+        return result;
     }
 
     nlohmann::json convoJson;
@@ -458,23 +461,22 @@ nlohmann::json FileStorage::loadConversation(const std::string& userA,
         in >> convoJson;
     } catch (...) {
         std::cerr << "[FileStorage] Invalid JSON in "
-                  << convoFile.string() << ", resetting\n";
-
-        return nlohmann::json{
-                {"messages", nlohmann::json::array()}
-        };
+                  << convoFile.string() << "\n";
+        return result;
     }
 
-    if (!convoJson.contains("messages") || !convoJson["messages"].is_array()) {
-        convoJson["messages"] = nlohmann::json::array();
+    if (!convoJson.contains("messages") ||
+        !convoJson["messages"].is_array()) {
+        return result;
     }
 
-    // ensure message has timestamp
-    for (auto& msg : convoJson["messages"]) {
-        if (!msg.contains("timestamp")) {
-            msg["timestamp"] = 0L;
+    for (const auto& msg : convoJson["messages"]) {
+        long ts = msg.value("timestamp", 0L);
+
+        if (ts > lastSeen) {
+            result["messages"].push_back(msg);
         }
     }
 
-    return convoJson;
+    return result;
 }

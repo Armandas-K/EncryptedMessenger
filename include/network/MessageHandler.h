@@ -19,7 +19,7 @@ public:
     bool checkUserExists(TcpConnection::pointer requester, const std::string &username);
 
     // called by tcpServer for receive message action
-    bool fetchMessages(TcpConnection::pointer requester, const std::string &withUser);
+    bool fetchMessages(TcpConnection::pointer requester, const std::string &withUser, long lastSeen);
 
     // called by tcpServer for get conversations action
     bool fetchConversations(TcpConnection::pointer requester);

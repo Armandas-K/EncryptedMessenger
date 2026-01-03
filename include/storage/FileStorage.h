@@ -65,7 +65,7 @@ public:
     bool deleteUser(const std::string &username);
 
     // get message json shared between 2 users
-    nlohmann::json loadConversation(const std::string &userA, const std::string &userB);
+    nlohmann::json loadConversationSince(const std::string &userA, const std::string &userB, long lastSeen);
 
     // allow tcpServer to access mutex
     std::mutex& mutex() { return file_mutex_; }

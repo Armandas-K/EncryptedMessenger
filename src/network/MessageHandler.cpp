@@ -80,7 +80,8 @@ bool MessageHandler::checkUserExists(
 
 bool MessageHandler::fetchMessages(
     const TcpConnection::pointer requester,
-    const std::string& withUser) {
+    const std::string& withUser,
+    long lastSeen) {
     std::string requesterName = requester->getUsername();
 
     if (requesterName.empty()) {
@@ -88,26 +89,18 @@ bool MessageHandler::fetchMessages(
         return false;
     }
 
-    if (withUser.empty()) {
-        requester->send(R"({"status":"error","message":"Missing 'with' field"})");
-        return false;
-    }
-
     if (!storage_.userExists(withUser)) {
-        requester->send(R"({"status":"error","message":"User does not exist"})");
-        return false;
-    }
-
-    // load conversation JSON
-    nlohmann::json convo = storage_.loadConversation(requesterName, withUser);
-
-    if (convo.is_null() || !convo.contains("messages")) {
+        // empty conversation - no error
         nlohmann::json response;
         response["status"] = "success";
         response["messages"] = nlohmann::json::array();
         requester->send(response.dump());
         return true;
     }
+
+    // load conversation JSON
+    nlohmann::json convo =
+        storage_.loadConversationSince(requesterName, withUser, lastSeen);
 
     // build response
     nlohmann::json response;
