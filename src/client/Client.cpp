@@ -485,22 +485,42 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
 
     lastStatus_ = msg.value("status", "error");
 
-    // append new messages, only cleared by cli when conversation changes
-    // expects only new messages, doesnt check for duplicates
-    if (lastStatus_ == "success" && msg.contains("messages")) {
-        for (const auto& m : msg["messages"]) {
-            lastMessages_.push_back(m);
+    if (lastStatus_ != "success" ||
+        !msg.contains("messages") ||
+        !msg["messages"].is_array()) {
 
-            long ts = m.value("timestamp", 0L);
-            const std::string& from = m.value("from", "");
-            const std::string& to   = m.value("to", "");
+        pendingAction_.clear();
+        responseReady_ = true;
+        responseCv_.notify_one();
+        return;
+    }
 
-            // get other users username
-            std::string other =
-                (from == username_) ? to : from;
+    for (const auto& m : msg["messages"]) {
+        // skip if not json obj
+        if (!m.is_object()) {
+            continue;
+        }
 
-            auto& lastSeen = lastSeenTimestamps_[other];
-            lastSeen = std::max(lastSeen, ts);
+        // append each new message
+        lastMessages_.push_back(m);
+
+        const long ts = m.value("timestamp", 0L);
+        const std::string from = m.value("from", "");
+        const std::string to   = m.value("to", "");
+
+        // skip if missing from/to fields
+        if (from.empty() || to.empty()) {
+            continue;
+        }
+
+        // get other users username
+        std::string other =
+            (from == username_) ? to : from;
+
+        // update last seen timestamp
+        auto& lastSeen = lastSeenTimestamps_[other];
+        if (ts > lastSeen) {
+            lastSeen = ts;
         }
     }
 
