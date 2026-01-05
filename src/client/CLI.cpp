@@ -224,6 +224,7 @@ void CLI::handleConversationsInput(int choice) {
     size_t index = choice - 4;
     if (index < conversations.size()) {
         activeChatUser_ = conversations[index];
+        client_->clearCachedMessages();
         currentPage_ = Page::VIEW_MESSAGES;
     }
 }

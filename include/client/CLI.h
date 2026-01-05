@@ -48,6 +48,11 @@ private:
     void showMessagesPage();
     void handleMessagesInput(int choice);
 
+    // for showMessagesPage auto refresh
+    void renderMessagesOnce();
+    void startMessagePolling();
+    void stopMessagePolling();
+
     // helpers
     void displayCurrentPage();
     int getUserChoice(int min, int max);
