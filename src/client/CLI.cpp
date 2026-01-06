@@ -238,41 +238,61 @@ void CLI::showMessagesPage() {
         return;
     }
 
-    Logger::log("Fetching messages...");
+    startMessagePolling();
 
-    if (!client_->getMessages(activeChatUser_)) {
-        Logger::log("Failed to load messages");
-        currentPage_ = Page::CONVERSATIONS;
-        return;
-    }
+    renderMessagesOnce();
 
-    // messages in plaintext
+    Logger::log("\n1. Send message");
+    Logger::log("2. Back");
+
+    int choice = getUserChoice(1, 2);
+    handleMessagesInput(choice);
+}
+
+void CLI::renderMessagesOnce() {
     auto messages = client_->getDecryptedMessages();
 
+    Logger::log("-------------------------");
+
     if (messages.empty()) {
-        Logger::log("No messages in this conversation");
+        Logger::log("No messages");
     } else {
         for (const auto& text : messages) {
             Logger::log(text);
         }
     }
 
-    Logger::log("\n1. Refresh");
-    Logger::log("2. Send message");
-    Logger::log("3. Back");
+    Logger::log("-------------------------");
+}
 
-    int choice = getUserChoice(1, 3);
-    handleMessagesInput(choice);
+//todo fix getMessages being called many times before server response
+void CLI::startMessagePolling() {
+    if (pollingMessages_) return;
+
+    pollingMessages_ = true;
+
+    messagePoller_ = std::thread([this]() {
+        while (pollingMessages_) {
+            if (!client_->getMessages(activeChatUser_)) {
+                Logger::log("Message poll failed");
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(fetchIntervalMs_));
+        }
+    });
+}
+
+void CLI::stopMessagePolling() {
+    pollingMessages_ = false;
+
+    if (messagePoller_.joinable()) {
+        messagePoller_.join();
+    }
 }
 
 void CLI::handleMessagesInput(int choice) {
     switch (choice) {
-        case 1:
-            // refresh by re-rendering this page
-            currentPage_ = Page::VIEW_MESSAGES;
-            break;
-
-        case 2: {
+        case 1: {
             std::string text;
             Logger::log("Message: ");
             std::cin.ignore();
@@ -283,12 +303,11 @@ void CLI::handleMessagesInput(int choice) {
             } else {
                 Logger::log("Failed to send message");
             }
-
-            currentPage_ = Page::VIEW_MESSAGES;
             break;
         }
 
-        case 3:
+        case 2:
+            stopMessagePolling();
             currentPage_ = Page::CONVERSATIONS;
             break;
     }

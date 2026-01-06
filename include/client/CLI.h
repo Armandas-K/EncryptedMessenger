@@ -59,5 +59,12 @@ private:
 
     // username of other user in currently viewed conversation
     std::string activeChatUser_;
+
+    // starts and stops background message polling
+    std::atomic<bool> pollingMessages_{false};
+    // background thread that fetches messages
+    std::thread messagePoller_;
+    // time between message fetches
+    static constexpr int fetchIntervalMs_ = 1000;
 };
 #endif //ENCRYPTEDMESSENGER_CLI_H
