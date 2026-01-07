@@ -251,10 +251,7 @@ void CLI::startMessagePolling() {
 
     messagePoller_ = std::thread([this]() {
         while (pollingMessages_) {
-            if (!client_->getMessages(activeChatUser_)) {
-                Logger::log("Message poll failed");
-            }
-
+            client_->pollMessages(activeChatUser_);
             std::this_thread::sleep_for(std::chrono::milliseconds(fetchIntervalMs_));
         }
     });

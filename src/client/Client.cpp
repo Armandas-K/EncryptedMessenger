@@ -260,6 +260,28 @@ bool Client::getMessages(const std::string& withUser) {
     return waitForResponse();
 }
 
+bool Client::pollMessages(const std::string& withUser) {
+    if (!connection_ || !connection_->socket().is_open()) {
+        return false;
+    }
+
+    // dont change pending action
+    long lastSeen = 0;
+    {
+        std::lock_guard<std::mutex> lock(responseMutex_);
+        lastSeen = lastSeenTimestamps_[withUser];
+    }
+
+    nlohmann::json msg = {
+        {"action", "get_messages"},
+        {"with", withUser},
+        {"since", lastSeen}
+    };
+
+    connection_->send(msg.dump());
+    return true;
+}
+
 bool Client::userExists(const std::string& username) {
     pendingAction_ = "user_exists";
 
@@ -482,6 +504,7 @@ void Client::handleResponse(const std::string& status, const std::string& messag
     responseCv_.notify_one();
 }
 
+// todo if called by message poller, dont touch pending_action or notify responseCv
 void Client::handleMessagesResponse(const nlohmann::json& msg) {
     std::lock_guard<std::mutex> lock(responseMutex_);
 

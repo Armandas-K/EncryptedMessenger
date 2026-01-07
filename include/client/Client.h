@@ -34,6 +34,8 @@ public:
 
     // receive messages from conversation with this user and withUser
     bool getMessages(const std::string &withUser);
+    // non blocking getMessages request for CLI
+    bool pollMessages(const std::string &withUser);
 
     // query if user exists before trying to get messages with them
     bool userExists(const std::string &username);
