@@ -236,22 +236,26 @@ bool Client::getMessages(const std::string& withUser) {
         return false;
     }
 
+    if (pendingAction_ == "get_messages") {
+        // already fetching
+        return true;
+    }
+
     pendingAction_ = "get_messages";
 
     // find last seen timestamp for this conversation, 0 = full conv
-    long since = 0;
+    long lastSeen = 0;
     {
         std::lock_guard<std::mutex> lock(responseMutex_);
-        auto it = lastSeenTimestamps_.find(withUser);
-        if (it != lastSeenTimestamps_.end()) {
-            since = it->second;
-        }
+        lastSeen = lastSeenTimestamps_[withUser];
     }
+
+    Logger::log("[Client] get msg: " + std::to_string(lastSeen));
 
     json msg = {
         {"action", "get_messages"},
         {"with", withUser},
-        {"since", since}
+        {"last_seen", lastSeen}
     };
 
     connection_->send(msg.dump());
@@ -495,6 +499,8 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
         return;
     }
 
+    long maxTs = 0;
+
     for (const auto& m : msg["messages"]) {
         // skip if not json obj
         if (!m.is_object()) {
@@ -514,14 +520,10 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
         }
 
         // get other users username
-        std::string other =
-            (from == username_) ? to : from;
+        std::string other = (from == username_) ? to : from;
 
-        // update last seen timestamp
-        auto& lastSeen = lastSeenTimestamps_[other];
-        if (ts > lastSeen) {
-            lastSeen = ts;
-        }
+        if (ts > maxTs) maxTs = ts;
+        lastSeenTimestamps_[other] = maxTs;
     }
 
     pendingAction_.clear();

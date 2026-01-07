@@ -445,6 +445,7 @@ nlohmann::json FileStorage::loadConversationSince(
     const std::string& userB,
     long lastSeen) {
     std::lock_guard<std::mutex> lock(file_mutex_);
+    Logger::log("file: load convo since " + std::to_string(lastSeen));
 
     const auto convoFile = conversationFilePath_NoLock(userA, userB);
 

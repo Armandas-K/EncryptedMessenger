@@ -265,7 +265,6 @@ void CLI::renderMessagesOnce() {
     Logger::log("-------------------------");
 }
 
-//todo fix getMessages being called many times before server response
 void CLI::startMessagePolling() {
     if (pollingMessages_) return;
 
