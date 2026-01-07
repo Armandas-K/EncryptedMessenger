@@ -35,9 +35,6 @@ void CLI::displayCurrentPage() {
         case Page::CREATE_ACCOUNT:
             showCreateAccountPage();
             break;
-        case Page::SEND_MESSAGE:
-            showSendMessagePage();
-            break;
         case Page::CONVERSATIONS:
             showConversationsPage();
             break;
@@ -87,7 +84,6 @@ void CLI::handleLoginInput(int choice) {
             std::cin >> password;
 
             if (client_->login(username, password)) {
-                Logger::log("Login successful");
                 currentPage_ = Page::CONVERSATIONS;
             } else {
                 Logger::log("Login failed");
@@ -131,36 +127,6 @@ void CLI::handleCreateAccountInput(int choice) {
             break;
     }
 }
-
-// Send Message Page
-void CLI::showSendMessagePage() {
-    Logger::log("\n=== Send Message ===");
-    Logger::log("1. Send a message");
-    Logger::log("2. Log out");
-    int choice = getUserChoice(1, 2);
-    handleSendMessageInput(choice);
-}
-
-void CLI::handleSendMessageInput(int choice) {
-    switch (choice) {
-        case 1: {
-            std::string recipient, message;
-            Logger::log("Recipient: ");
-            std::cin >> recipient;
-            std::cin.ignore();
-            Logger::log("Message: ");
-            std::getline(std::cin, message);
-            client_->sendMessage(recipient, message);
-            Logger::log("Message sent");
-            break;
-        }
-        case 2:
-            client_->logout();
-            currentPage_ = Page::MAIN_MENU;
-            break;
-    }
-}
-
 
 void CLI::showConversationsPage() {
     Logger::log("\n=== Conversations ===");
@@ -223,6 +189,7 @@ void CLI::handleConversationsInput(int choice) {
     // existing conversation
     size_t index = choice - 4;
     if (index < conversations.size()) {
+        stopMessagePolling();
         activeChatUser_ = conversations[index];
         client_->clearCachedMessages();
         currentPage_ = Page::VIEW_MESSAGES;
@@ -238,9 +205,21 @@ void CLI::showMessagesPage() {
         return;
     }
 
-    startMessagePolling();
+    // for safety
+    stopMessagePolling();
+
+    // initial synchronous fetch
+    Logger::log("Fetching messages...");
+    if (!client_->getMessages(activeChatUser_)) {
+        Logger::log("Failed to load messages");
+        currentPage_ = Page::CONVERSATIONS;
+        return;
+    }
 
     renderMessagesOnce();
+
+    // start background polling
+    startMessagePolling();
 
     Logger::log("\n1. Send message");
     Logger::log("2. Back");
@@ -292,16 +271,28 @@ void CLI::stopMessagePolling() {
 void CLI::handleMessagesInput(int choice) {
     switch (choice) {
         case 1: {
+            // pause polling to avoid racing get_messages against background thread
+            stopMessagePolling();
+
             std::string text;
             Logger::log("Message: ");
-            std::cin.ignore();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::getline(std::cin, text);
 
-            if (client_->sendMessage(activeChatUser_, text)) {
-                Logger::log("Message sent");
-            } else {
+            if (!client_->sendMessage(activeChatUser_, text)) {
                 Logger::log("Failed to send message");
             }
+
+            // synchronous fetch to include users sent message
+            if (!client_->getMessages(activeChatUser_)) {
+                Logger::log("Failed to refresh messages after send");
+            }
+
+            renderMessagesOnce();
+
+            // resume polling
+            startMessagePolling();
+
             break;
         }
 

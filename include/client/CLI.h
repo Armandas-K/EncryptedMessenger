@@ -9,7 +9,6 @@ enum class Page {
     MAIN_MENU,
     LOGIN,
     CREATE_ACCOUNT,
-    SEND_MESSAGE,
     EXIT,
     CONVERSATIONS,
     VIEW_MESSAGES
@@ -38,9 +37,6 @@ private:
 
     void showCreateAccountPage();
     void handleCreateAccountInput(int choice);
-
-    void showSendMessagePage();
-    void handleSendMessageInput(int choice);
 
     void showConversationsPage();
     void handleConversationsInput(int choice);

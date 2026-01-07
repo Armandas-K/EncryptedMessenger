@@ -250,8 +250,6 @@ bool Client::getMessages(const std::string& withUser) {
         lastSeen = lastSeenTimestamps_[withUser];
     }
 
-    Logger::log("[Client] get msg: " + std::to_string(lastSeen));
-
     json msg = {
         {"action", "get_messages"},
         {"with", withUser},
