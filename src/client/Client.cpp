@@ -266,6 +266,8 @@ bool Client::pollMessages(const std::string& withUser) {
     }
 
     // dont change pending action
+    isPolling_ = true;
+
     long lastSeen = 0;
     {
         std::lock_guard<std::mutex> lock(responseMutex_);
@@ -504,7 +506,6 @@ void Client::handleResponse(const std::string& status, const std::string& messag
     responseCv_.notify_one();
 }
 
-// todo if called by message poller, dont touch pending_action or notify responseCv
 void Client::handleMessagesResponse(const nlohmann::json& msg) {
     std::lock_guard<std::mutex> lock(responseMutex_);
 
@@ -514,9 +515,11 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
         !msg.contains("messages") ||
         !msg["messages"].is_array()) {
 
-        pendingAction_.clear();
-        responseReady_ = true;
-        responseCv_.notify_one();
+        if (!isPolling_) {
+            pendingAction_.clear();
+            responseReady_ = true;
+            responseCv_.notify_one();
+        } else isPolling_ = false;
         return;
     }
 
@@ -547,9 +550,11 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
         lastSeenTimestamps_[other] = maxTs;
     }
 
-    pendingAction_.clear();
-    responseReady_ = true;
-    responseCv_.notify_one();
+    if (!isPolling_) {
+        pendingAction_.clear();
+        responseReady_ = true;
+        responseCv_.notify_one();
+    } else isPolling_ = false;
 }
 
 bool Client::waitForResponse() {
