@@ -247,7 +247,8 @@ bool Client::getMessages(const std::string& withUser) {
     long lastSeen = 0;
     {
         std::lock_guard<std::mutex> lock(responseMutex_);
-        lastSeen = lastSeenTimestamps_[withUser];
+        auto it = lastSeenTimestamps_.find(withUser);
+        if (it != lastSeenTimestamps_.end()) lastSeen = it->second;
     }
 
     json msg = {
@@ -271,13 +272,14 @@ bool Client::pollMessages(const std::string& withUser) {
     long lastSeen = 0;
     {
         std::lock_guard<std::mutex> lock(responseMutex_);
-        lastSeen = lastSeenTimestamps_[withUser];
+        auto it = lastSeenTimestamps_.find(withUser);
+        if (it != lastSeenTimestamps_.end()) lastSeen = it->second;
     }
 
     nlohmann::json msg = {
         {"action", "get_messages"},
         {"with", withUser},
-        {"since", lastSeen},
+        {"last_seen", lastSeen},
         {"mode", "polling"}
     };
 
@@ -511,8 +513,7 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
     std::lock_guard<std::mutex> lock(responseMutex_);
 
     // if polling, dont notify for response
-    const bool isPolling =
-        msg.value("mode", "blocking") == "poll";
+    const bool isPolling = msg.value("mode", "blocking") == "poll";
 
     lastStatus_ = msg.value("status", "error");
 
@@ -532,27 +533,34 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
 
     for (const auto& m : msg["messages"]) {
         // skip if not json obj
-        if (!m.is_object()) {
-            continue;
+        if (!m.is_object()) continue;
+
+        // make sure timestamp exists
+        long ts = 0;
+        if (m.contains("timestamp") && m["timestamp"].is_number_integer()) {
+            ts = m["timestamp"].get<long>();
+        } else {
+            // incase timestamp is stored as string
+            if (m.contains("timestamp") && m["timestamp"].is_string()) {
+                ts = std::stol(m["timestamp"].get<std::string>());
+            }
         }
 
-        // append each new message
-        lastMessages_.push_back(m);
-
-        const long ts = m.value("timestamp", 0L);
         const std::string from = m.value("from", "");
         const std::string to   = m.value("to", "");
 
         // skip if missing from/to fields
-        if (from.empty() || to.empty()) {
-            continue;
-        }
+        if (from.empty() || to.empty()) continue;
+
+        // append each new message
+        lastMessages_.push_back(m);
 
         // get other users username
         std::string other = (from == username_) ? to : from;
 
-        if (ts > maxTs) maxTs = ts;
-        lastSeenTimestamps_[other] = maxTs;
+        // update only if higher than current timestamp stored
+        auto& seen = lastSeenTimestamps_[other];
+        seen = std::max(seen, ts);
     }
 
     if (!isPolling) {
