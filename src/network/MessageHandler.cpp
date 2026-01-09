@@ -81,7 +81,8 @@ bool MessageHandler::checkUserExists(
 bool MessageHandler::fetchMessages(
     const TcpConnection::pointer requester,
     const std::string& withUser,
-    long lastSeen) {
+    long lastSeen,
+    std::string mode) {
     std::string requesterName = requester->getUsername();
 
     if (requesterName.empty()) {
@@ -106,6 +107,7 @@ bool MessageHandler::fetchMessages(
     nlohmann::json response;
     response["status"] = "success";
     response["messages"] = convo["messages"];
+    response["mode"] = mode;
 
     requester->send(response.dump());
     return true;

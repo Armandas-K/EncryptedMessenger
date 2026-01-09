@@ -133,13 +133,14 @@ void TcpServer::handleGetMessages(
     const nlohmann::json& data) {
     std::string withUser = data.value("with", "");
     long lastSeen = data.value("last_seen", 0L);
+    std::string mode = data.value("mode", "");
 
     if (withUser.empty()) {
         connection->send(R"({"status":"error","message":"Missing username"})");
         return;
     }
 
-    messageHandler_.fetchMessages(connection, withUser, lastSeen);
+    messageHandler_.fetchMessages(connection, withUser, lastSeen, mode);
 }
 
 void TcpServer::handleUserExists(TcpConnection::pointer connection,

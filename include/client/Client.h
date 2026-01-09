@@ -86,7 +86,6 @@ private:
 
     // pending action system
     std::string pendingAction_;
-    bool isPolling_;
     std::string lastLoginUsername_;
 
     // cached data for CLI

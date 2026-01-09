@@ -253,7 +253,8 @@ bool Client::getMessages(const std::string& withUser) {
     json msg = {
         {"action", "get_messages"},
         {"with", withUser},
-        {"last_seen", lastSeen}
+        {"last_seen", lastSeen},
+        {"mode", "blocking"}
     };
 
     connection_->send(msg.dump());
@@ -266,7 +267,6 @@ bool Client::pollMessages(const std::string& withUser) {
     }
 
     // dont change pending action
-    isPolling_ = true;
 
     long lastSeen = 0;
     {
@@ -277,7 +277,8 @@ bool Client::pollMessages(const std::string& withUser) {
     nlohmann::json msg = {
         {"action", "get_messages"},
         {"with", withUser},
-        {"since", lastSeen}
+        {"since", lastSeen},
+        {"mode", "polling"}
     };
 
     connection_->send(msg.dump());
@@ -509,17 +510,21 @@ void Client::handleResponse(const std::string& status, const std::string& messag
 void Client::handleMessagesResponse(const nlohmann::json& msg) {
     std::lock_guard<std::mutex> lock(responseMutex_);
 
+    // if polling, dont notify for response
+    const bool isPolling =
+        msg.value("mode", "blocking") == "poll";
+
     lastStatus_ = msg.value("status", "error");
 
     if (lastStatus_ != "success" ||
         !msg.contains("messages") ||
         !msg["messages"].is_array()) {
 
-        if (!isPolling_) {
+        if (!isPolling) {
             pendingAction_.clear();
             responseReady_ = true;
             responseCv_.notify_one();
-        } else isPolling_ = false;
+        }
         return;
     }
 
@@ -550,11 +555,11 @@ void Client::handleMessagesResponse(const nlohmann::json& msg) {
         lastSeenTimestamps_[other] = maxTs;
     }
 
-    if (!isPolling_) {
+    if (!isPolling) {
         pendingAction_.clear();
         responseReady_ = true;
         responseCv_.notify_one();
-    } else isPolling_ = false;
+    }
 }
 
 bool Client::waitForResponse() {
